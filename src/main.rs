@@ -33,7 +33,7 @@ async fn main() -> Result<()> {
         let prompt = prompt.to_string();
         let model = ui.get_current_model().to_string();
 
-        dbg!("Querying [{}]: {}", &model, &prompt);
+        dbg!("Querying", &model, &prompt);
         spawn_local(async move {
             dbg!("Spawning Ollama request");
             use tokio_stream::StreamExt;
@@ -61,7 +61,7 @@ async fn main() -> Result<()> {
 
 fn get_ollama() -> Result<Ollama> {
     let (host, port) = get_ollama_host()?;
-    dbg!("Trying to connect to {}:{}", &host, port);
+    dbg!("Trying to connect", &host, port);
     Ok(Ollama::new(host, port))
 }
 

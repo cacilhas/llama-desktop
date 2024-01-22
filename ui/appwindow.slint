@@ -52,6 +52,7 @@ export component AppWindow inherits Window {
       ComboBox {
         current-value: root.current-model;
         model: root.ai-models;
+        selected(value) => { root.current-model = value; }
       }
     }
 
