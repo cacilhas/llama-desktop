@@ -1,0 +1,109 @@
+import { Button, ComboBox, Spinner } from "std-widgets.slint";
+
+export component AppWindow inherits Window {
+  width: 400px;
+  height: 800px;
+  background: #100408;
+  padding: 5px;
+  forward-focus: prompt;
+
+  in-out property <[string]> ai-models: [];
+  in-out property <string> current-model: "Loading...";
+
+  VerticalLayout {
+    width: parent.width - 10px;
+    height: parent.height - 10px;
+
+    // 1st row
+    HorizontalLayout {
+      width: parent.width;
+      height: 28px;
+      alignment: end;
+
+      Text {
+        color: #541021;
+        font-family: "Aclonica";
+        font-size: 24px;
+        font-weight: 900;
+        text: "Model:";
+      }
+
+      // Filler
+      Rectangle {
+        width: 5px;
+        height: parent.height;
+      }
+
+      ComboBox {
+        current-value: root.current-model;
+        model: root.ai-models;
+      }
+    }
+
+    // Filler
+    Rectangle {
+      width: parent.width;
+      height: 5px;
+    }
+
+    // 2nd row
+    Rectangle {
+      width: parent.width;
+      height: (parent.height - 58px) / 2;
+      background: #ab90ab;
+
+      prompt := TextInput {
+        color: #100408;
+        font-family: "Bellota";
+        font-size: 18px;
+        font-weight: 600;
+        text: "Why is the sky blue?";
+        single-line: false;
+        wrap: word-wrap;
+      }
+    }
+
+    // Filler
+    Rectangle {
+      width: parent.width;
+      height: 5px;
+    }
+
+    // 3rd row
+    Button {
+      x: 5px;
+      width: parent.width - 10px;
+      height: 24px;
+      primary: true;
+      text: "Send";
+    }
+
+    // Filler
+    Rectangle {
+      width: parent.width;
+      height: 5px;
+    }
+
+    // 4nd row
+    Rectangle {
+      width: parent.width;
+      height: (parent.height - 58px) / 2;
+      background: #ab90ab;
+
+      response := TextInput {
+        color: #100408;
+        font-family: "Bellota";
+        font-size: 18px;
+        font-weight: 600;
+        read-only: true;
+        single-line: false;
+        wrap: word-wrap;
+
+        spinner := Spinner {
+          indeterminate: true;
+          visible: false;
+        }
+      }
+    }
+  }
+}
