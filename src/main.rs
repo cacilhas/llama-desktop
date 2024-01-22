@@ -1,15 +1,19 @@
 slint::include_modules!();
 
 use eyre::*;
-use ollama_rs::Ollama;
-use slint::{SharedString, VecModel};
+use ollama_rs::{generation::completion::request::GenerationRequest, Ollama};
+use slint::{spawn_local, SharedString, VecModel};
 use std::{env, rc::Rc};
 use url::Url;
 
+static mut OLLAMA: Option<Ollama> = None;
+
 #[tokio::main]
 async fn main() -> Result<()> {
-    let ollama = get_ollama()?;
-    let models = get_models(&ollama).await?;
+    unsafe {
+        OLLAMA = Some(get_ollama()?);
+    }
+    let models = get_models().await?;
     let current_model = select_current_model(&models)?;
 
     let models = Rc::new(VecModel::from(
@@ -22,6 +26,34 @@ async fn main() -> Result<()> {
     let ui = AppWindow::new()?;
     ui.set_ai_models(models.into());
     ui.set_current_model(current_model.into());
+
+    let ui_handle = ui.as_weak();
+    ui.on_query(move |prompt| {
+        let ui = ui_handle.unwrap();
+        let prompt = prompt.to_string();
+        let model = ui.get_current_model().to_string();
+
+        dbg!("Querying [{}]: {}", &model, &prompt);
+        spawn_local(async move {
+            dbg!("Spawning Ollama request");
+            use tokio_stream::StreamExt;
+            let mut stream = unsafe { OLLAMA.clone().unwrap() }
+                .generate_stream(GenerationRequest::new(model, prompt))
+                .await
+                .unwrap();
+
+            while let Some(res) = stream.next().await {
+                for chunk in res.unwrap().iter() {
+                    ui.invoke_update_response(chunk.response.to_owned().into());
+                }
+            }
+
+            ui.invoke_response_done();
+            dbg!("Response received");
+        })
+        .unwrap();
+    });
+
     Ok(ui.run()?)
 }
 
@@ -29,6 +61,7 @@ async fn main() -> Result<()> {
 
 fn get_ollama() -> Result<Ollama> {
     let (host, port) = get_ollama_host()?;
+    dbg!("Trying to connect to {}:{}", &host, port);
     Ok(Ollama::new(host, port))
 }
 
@@ -46,18 +79,23 @@ fn get_ollama_host() -> Result<(String, u16)> {
     ))
 }
 
-async fn get_models(ollama: &Ollama) -> Result<Vec<String>> {
-    let models = ollama
-        .list_local_models()
-        .await?
-        .iter()
-        .map(|model| model.name.to_owned())
-        .collect::<Vec<_>>();
+async fn get_models() -> Result<Vec<String>> {
+    unsafe {
+        let models = OLLAMA
+            .clone()
+            .ok_or_eyre("ollama not connected")?
+            .list_local_models()
+            .await?
+            .iter()
+            .map(|model| model.name.to_owned())
+            .collect::<Vec<_>>();
 
-    if models.is_empty() {
-        Err(eyre!("no model found"))
-    } else {
-        Ok(models)
+        if models.is_empty() {
+            Err(eyre!("no model found"))
+        } else {
+            dbg!("Models received");
+            Ok(models)
+        }
     }
 }
 

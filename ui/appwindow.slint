@@ -9,6 +9,21 @@ export component AppWindow inherits Window {
 
   in-out property <[string]> ai-models: [];
   in-out property <string> current-model: "Loading...";
+  callback query(string);
+
+  function send-prompt() {
+    response.text = "";
+    spinner.visible = true;
+    query(prompt.text);
+  }
+
+  public function update-response(res: string) {
+    response.text += res;
+  }
+
+  public function response-done() {
+    spinner.visible = false;
+  }
 
   VerticalLayout {
     width: parent.width - 10px;
@@ -49,7 +64,7 @@ export component AppWindow inherits Window {
     // 2nd row
     Rectangle {
       width: parent.width;
-      height: (parent.height - 58px) / 2;
+      height: (parent.height - 66px) / 2;
       background: #ab90ab;
 
       prompt := TextInput {
@@ -76,6 +91,7 @@ export component AppWindow inherits Window {
       height: 24px;
       primary: true;
       text: "Send";
+      clicked => { send-prompt(); }
     }
 
     // Filler
@@ -87,7 +103,7 @@ export component AppWindow inherits Window {
     // 4nd row
     Rectangle {
       width: parent.width;
-      height: (parent.height - 58px) / 2;
+      height: (parent.height - 66px) / 2;
       background: #ab90ab;
 
       response := TextInput {
