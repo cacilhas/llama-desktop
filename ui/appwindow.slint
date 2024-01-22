@@ -1,10 +1,11 @@
-import { Button, ComboBox, Spinner } from "std-widgets.slint";
+import { Button, ComboBox, ScrollView, Spinner } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
   width: 400px;
   height: 800px;
   background: #100408;
   padding: 5px;
+  default-font-family: "Bellota";
   forward-focus: prompt;
 
   in-out property <[string]> ai-models: [];
@@ -19,6 +20,7 @@ export component AppWindow inherits Window {
 
   public function update-response(res: string) {
     response.text += res;
+    scroll.viewport-height = response.height;
   }
 
   public function response-done() {
@@ -70,7 +72,6 @@ export component AppWindow inherits Window {
 
       prompt := TextInput {
         color: #100408;
-        font-family: "Bellota";
         font-size: 18px;
         font-weight: 600;
         text: "Why is the sky blue?";
@@ -107,19 +108,29 @@ export component AppWindow inherits Window {
       height: (parent.height - 66px) / 2;
       background: #ab90ab;
 
-      response := TextInput {
-        color: #100408;
-        font-family: "Bellota";
-        font-size: 18px;
-        font-weight: 600;
-        read-only: true;
-        single-line: false;
-        wrap: word-wrap;
+      scroll := ScrollView {
+        width: parent.width;
+        height: parent.height;
+        viewport-width: self.width - 10px;
+        viewport-height: self.height;
 
-        spinner := Spinner {
-          indeterminate: true;
-          visible: false;
+        response := TextInput {
+          width: parent.viewport-width;
+          height: 18px;
+          color: #100408;
+          font-size: 18px;
+          font-weight: 600;
+          read-only: true;
+          single-line: false;
+          wrap: word-wrap;
         }
+      }
+
+      spinner := Spinner {
+        x: (parent.width - self.width) / 2;
+        y: (parent.height - self.height) / 2;
+        indeterminate: true;
+        visible: false;
       }
     }
   }
