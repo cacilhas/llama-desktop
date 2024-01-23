@@ -1,6 +1,7 @@
 import { Button, ComboBox, ScrollView, Spinner, TextEdit } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
+  title: "Llama Desktop";
   width: 400px;
   height: 800px;
   background: #100408;
@@ -34,7 +35,17 @@ export component AppWindow inherits Window {
     HorizontalLayout {
       width: parent.width;
       height: 28px;
-      alignment: end;
+      alignment: stretch;
+
+      Image {
+        source: @image-url("./icon.png");
+      }
+
+      // Filler
+      Rectangle {
+        width: 38px;
+        height: parent.height;
+      }
 
       Text {
         color: #541021;
@@ -42,12 +53,6 @@ export component AppWindow inherits Window {
         font-size: 24px;
         font-weight: 900;
         text: "Model:";
-      }
-
-      // Filler
-      Rectangle {
-        width: 5px;
-        height: parent.height;
       }
 
       ComboBox {
