@@ -1,4 +1,4 @@
-import { Button, ComboBox, ScrollView, Spinner } from "std-widgets.slint";
+import { Button, ComboBox, ScrollView, Spinner, TextEdit } from "std-widgets.slint";
 
 export component AppWindow inherits Window {
   width: 400px;
@@ -20,7 +20,6 @@ export component AppWindow inherits Window {
 
   public function update-response(res: string) {
     response.text += res;
-    scroll.viewport-height = response.height;
   }
 
   public function response-done() {
@@ -65,19 +64,12 @@ export component AppWindow inherits Window {
     }
 
     // 2nd row
-    Rectangle {
+    prompt := TextEdit {
       width: parent.width;
       height: (parent.height - 66px) / 2;
-      background: #ab90ab;
-
-      prompt := TextInput {
-        color: #100408;
-        font-size: 18px;
-        font-weight: 600;
-        text: "Why is the sky blue?";
-        single-line: false;
-        wrap: word-wrap;
-      }
+      font-size: 18px;
+      text: "Why is the sky blue?";
+      wrap: word-wrap;
     }
 
     // Filler
@@ -106,24 +98,13 @@ export component AppWindow inherits Window {
     Rectangle {
       width: parent.width;
       height: (parent.height - 66px) / 2;
-      background: #ab90ab;
 
-      scroll := ScrollView {
+      response := TextEdit {
         width: parent.width;
         height: parent.height;
-        viewport-width: self.width - 10px;
-        viewport-height: self.height;
-
-        response := TextInput {
-          width: parent.viewport-width;
-          height: 18px;
-          color: #100408;
-          font-size: 18px;
-          font-weight: 600;
-          read-only: true;
-          single-line: false;
-          wrap: word-wrap;
-        }
+        font-size: 18px;
+        read-only: true;
+        wrap: word-wrap;
       }
 
       spinner := Spinner {
