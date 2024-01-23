@@ -1,3 +1,4 @@
 - Replace ollama-rs by reqwest for a better chat control.
+- Make the window smaller and resizable.
 - Clean up logs.
 - Add shortcuts.
