@@ -11,6 +11,12 @@ Desktop app to connect to [Ollama][] and send queries.
 Llama Desktop reads the Ollama service URI from the environment variable
 `OLLAMA_HOST`, defaults to `http://localhost:11434`.
 
+## Installation
+
+```sh
+cargo install llama-desktop
+```
+
 ## License
 
 - [MIT][]
