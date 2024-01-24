@@ -33,7 +33,7 @@ version = "1.0"
 features = ["derive"]
 
 [dependencies.tokio]
-vesion = "1.35"
+version = "1.35"
 features = ["full"]
 
 [build-dependencies]
