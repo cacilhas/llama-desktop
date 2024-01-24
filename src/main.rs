@@ -1,19 +1,18 @@
+mod ollama;
+mod protocol;
+
 slint::include_modules!();
 
+use crate::protocol::*;
 use eyre::*;
-use ollama_rs::{generation::completion::request::GenerationRequest, Ollama};
-use slint::{spawn_local, SharedString, VecModel};
-use std::{env, rc::Rc};
-use url::Url;
-
-static mut OLLAMA: Option<Ollama> = None;
+use reqwest::header;
+use slint::{spawn_local, Model, SharedString, VecModel};
+use std::{borrow::Borrow, env, rc::Rc, str};
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    unsafe {
-        OLLAMA = Some(get_ollama()?);
-    }
-    let models = get_models().await?;
+    ollama::init()?;
+    let models = ollama::get_models().await?;
     let current_model = select_current_model(&models)?;
 
     let models = Rc::new(VecModel::from(
@@ -31,25 +30,8 @@ async fn main() -> Result<()> {
     ui.on_query(move |prompt| {
         let ui = ui_handle.unwrap();
         let prompt = prompt.to_string();
-        let model = ui.get_current_model().to_string();
-
-        dbg!("Querying", &model, &prompt);
         spawn_local(async move {
-            dbg!("Spawning Ollama request");
-            use tokio_stream::StreamExt;
-            let mut stream = unsafe { OLLAMA.clone().unwrap() }
-                .generate_stream(GenerationRequest::new(model, prompt))
-                .await
-                .unwrap();
-
-            while let Some(res) = stream.next().await {
-                for chunk in res.unwrap().iter() {
-                    ui.invoke_update_response(chunk.response.to_owned().into());
-                }
-            }
-
-            ui.invoke_response_done();
-            dbg!("Response received");
+            query(ui, prompt).await.unwrap();
         })
         .unwrap();
     });
@@ -59,52 +41,59 @@ async fn main() -> Result<()> {
 
 /*----------------------------------------------------------------------------*/
 
-fn get_ollama() -> Result<Ollama> {
-    let (host, port) = get_ollama_host()?;
-    dbg!("Trying to connect", &host, port);
-    Ok(Ollama::new(host, port))
-}
+async fn query(ui: AppWindow, prompt: String) -> Result<()> {
+    let model = ui.get_current_model().to_string();
+    let context: Vec<i32> = ui.get_chat_context().iter().collect();
+    let context = if context.is_empty() {
+        None
+    } else {
+        Some(context.iter().map(|e| *e as u16).collect())
+    };
 
-fn get_ollama_host() -> Result<(String, u16)> {
-    let uri = env::var("OLLAMA_HOST").unwrap_or("http://localhost:11434".to_owned());
-    let uri = Url::parse(&uri)?;
-    Ok((
-        format!(
-            "{}://{}",
-            uri.scheme(),
-            uri.host_str()
-                .ok_or_eyre(format!("fail to parse {}", uri))?
-        ),
-        uri.port().unwrap_or(11434),
-    ))
-}
+    let mut headers = header::HeaderMap::new();
+    headers.insert(
+        "Content-Type",
+        header::HeaderValue::from_static("application/json"),
+    );
+    let client = reqwest::Client::builder()
+        .default_headers(headers)
+        .build()?;
+    let payload = Request {
+        model,
+        prompt,
+        stream: true,
+        context,
+    };
+    let payload = serde_json::to_string(&payload)?;
+    let uri = ollama::path("/api/generate")?;
+    let mut response = client.post(uri).body(payload).send().await?;
+    if !response.status().is_success() {
+        let err = response.text().await.unwrap_or_else(|e| e.to_string());
+        ui.invoke_update_response(err.to_owned().into());
+        ui.invoke_response_done();
+        return Ok(());
+    }
 
-async fn get_models() -> Result<Vec<String>> {
-    unsafe {
-        let models = OLLAMA
-            .clone()
-            .ok_or_eyre("ollama not connected")?
-            .list_local_models()
-            .await?
-            .iter()
-            .map(|model| model.name.to_owned())
-            .collect::<Vec<_>>();
-
-        if models.is_empty() {
-            Err(eyre!("no model found"))
-        } else {
-            dbg!("Models received");
-            Ok(models)
+    while let Some(current) = response.chunk().await? {
+        let chunk: Response = serde_json::from_str(str::from_utf8(current.borrow())?)?;
+        ui.invoke_update_response(chunk.response.to_owned().into());
+        if let Some(context) = chunk.context {
+            let context = Rc::new(VecModel::from(
+                context.iter().map(|e| *e as i32).collect::<Vec<i32>>(),
+            ));
+            ui.set_chat_context(context.into());
         }
     }
+
+    ui.invoke_response_done();
+
+    Ok(())
 }
 
 fn select_current_model(models: &Vec<String>) -> Result<String> {
     let mut current_model: Option<String> = None;
     for model in models.clone().iter() {
         if current_model.is_none() && model == "llama2" {
-            current_model = Some(model.to_owned());
-        } else if model.contains("phind-codellama") {
             current_model = Some(model.to_owned());
             break;
         }
