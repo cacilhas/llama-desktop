@@ -1,5 +1,4 @@
 - Replace ollama-rs by reqwest for a better chat control.
-- Prevent app from sending requests repeatly.
 - Make the window smaller and resizable.
 - Clean up logs.
 - Add shortcuts.
