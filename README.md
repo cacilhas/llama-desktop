@@ -1,12 +1,16 @@
+[MIT]: https://github.com/cacilhas/llama-desktop/blob/master/COPYING
+[Llama]: https://raw.githubusercontent.com/cacilhas/llama-desktop/master/ui/icon.png
+[Ollama]: https://ollama.ai/
+
 # Llamma Desktop
 
-![Llama](https://raw.githubusercontent.com/cacilhas/llama-desktop/master/ui/icon.png)
+![Llama][]
 
-Desktop app to connect to Ollama and send queries.
+Desktop app to connect to [Ollama][] and send queries.
 
 Llama Desktop reads the Ollama service URI from the environment variable
 `OLLAMA_HOST`, defaults to `http://localhost:11434`.
 
 ## License
 
-- [MIT](https://github.com/cacilhas/llama-desktop/blob/master/COPYING)
+- [MIT][]
