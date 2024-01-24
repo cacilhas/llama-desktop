@@ -78,11 +78,9 @@ async fn get_models() -> Result<Vec<String>> {
             HOST.clone().ok_or_eyre("OLLAMA_HOST not loaded yet")?
         )
     };
-    let models = reqwest::get(uri)
-        .await?
-        .json::<ModelList>()
-        .await?
-        .models
+    let mut models = reqwest::get(uri).await?.json::<ModelList>().await?.models;
+    models.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    let models = models
         .iter()
         .map(|model| model.name.to_owned())
         .collect::<Vec<_>>();
@@ -116,8 +114,8 @@ fn select_current_model(models: &Vec<String>) -> Result<String> {
 struct Model {
     name: String,
     modified_at: String,
-    size: u64,
-    digest: String,
+    // size: u64,
+    // digest: String,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
