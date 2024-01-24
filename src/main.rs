@@ -1,10 +1,11 @@
 mod ollama;
+mod protocol;
 
 slint::include_modules!();
 
+use crate::protocol::*;
 use eyre::*;
 use reqwest::header;
-use serde::{Deserialize, Serialize};
 use slint::{spawn_local, Model, SharedString, VecModel};
 use std::{borrow::Borrow, env, rc::Rc, str};
 
@@ -110,29 +111,4 @@ fn select_current_model(models: &Vec<String>) -> Result<String> {
             .ok_or_eyre("no model found")?
             .to_owned(),
     ))
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct AIModel {
-    name: String,
-    modified_at: String,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-pub struct ModelList {
-    models: Vec<AIModel>,
-}
-
-#[derive(Debug, Clone, Serialize)]
-struct Request {
-    model: String,
-    prompt: String,
-    stream: bool,
-    context: Option<Vec<u16>>,
-}
-
-#[derive(Debug, Clone, Deserialize)]
-struct Response {
-    response: String,
-    context: Option<Vec<u16>>,
 }

@@ -1,4 +1,4 @@
-use crate::ModelList;
+use crate::protocol::ModelList;
 use eyre::*;
 use std::env;
 use url::Url;
