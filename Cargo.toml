@@ -1,9 +1,15 @@
 [package]
-name = "llama-desktop"
-version = "0.1.0"
-authors = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
-edition = "2021"
-build = "build.rs"
+name        = "llama-desktop"
+version     = "1.0.0"
+authors     = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
+license     = "BSD-3-Clause"
+readme      = "README.md"
+homepage    = "https://crates.io/crates/llama-desktop"
+repository  = "https://github.com/cacilhas/llama-desktop"
+keywords    = ["desktop", "artificial intelligence", "ai model"]
+description = "Desktop interface for Ollama"
+edition     = "2021"
+build       = "build.rs"
 
 [profile.release]
 opt-level = "s"
