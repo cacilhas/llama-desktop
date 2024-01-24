@@ -1,3 +1,5 @@
+mod ollama;
+
 slint::include_modules!();
 
 use eyre::*;
@@ -5,17 +7,11 @@ use reqwest::header;
 use serde::{Deserialize, Serialize};
 use slint::{spawn_local, Model, SharedString, VecModel};
 use std::{borrow::Borrow, env, rc::Rc, str};
-use url::Url;
-
-static mut HOST: Option<String> = None;
 
 #[tokio::main]
 async fn main() -> Result<()> {
-    unsafe {
-        HOST = Some(get_ollama_host()?);
-    }
-
-    let models = get_models().await?;
+    ollama::init()?;
+    let models = ollama::get_models().await?;
     let current_model = select_current_model(&models)?;
 
     let models = Rc::new(VecModel::from(
@@ -62,7 +58,7 @@ async fn main() -> Result<()> {
             let payload = serde_json::to_string(&payload)
                 .map_err(|e| e.to_string())
                 .unwrap();
-            let uri = unsafe { format!("{}/api/generate", HOST.clone().unwrap()) };
+            let uri = ollama::path("/api/generate").unwrap();
             let mut response = client
                 .post(uri)
                 .body(payload)
@@ -99,40 +95,6 @@ async fn main() -> Result<()> {
 
 /*----------------------------------------------------------------------------*/
 
-fn get_ollama_host() -> Result<String> {
-    let uri = env::var("OLLAMA_HOST").unwrap_or("http://localhost:11434".to_owned());
-    let uri = Url::parse(&uri)?;
-    Ok(format!(
-        "{}://{}:{}",
-        uri.scheme(),
-        uri.host_str()
-            .ok_or_eyre(format!("fail to parse {}", uri))?,
-        uri.port().unwrap_or(11434),
-    ))
-}
-
-async fn get_models() -> Result<Vec<String>> {
-    let uri = unsafe {
-        format!(
-            "{}/api/tags",
-            HOST.clone().ok_or_eyre("OLLAMA_HOST not loaded yet")?
-        )
-    };
-    let mut models = reqwest::get(uri).await?.json::<ModelList>().await?.models;
-    models.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
-    let models = models
-        .iter()
-        .map(|model| model.name.to_owned())
-        .collect::<Vec<_>>();
-
-    if models.is_empty() {
-        Err(eyre!("no model found"))
-    } else {
-        dbg!("Models received");
-        Ok(models)
-    }
-}
-
 fn select_current_model(models: &Vec<String>) -> Result<String> {
     let mut current_model: Option<String> = None;
     for model in models.clone().iter() {
@@ -157,7 +119,7 @@ struct AIModel {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-struct ModelList {
+pub struct ModelList {
     models: Vec<AIModel>,
 }
 
