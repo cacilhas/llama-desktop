@@ -1,8 +1,10 @@
 slint::include_modules!();
 
 use eyre::*;
-use slint::{spawn_local, SharedString, VecModel};
-use std::{env, rc::Rc};
+use reqwest::header;
+use serde::{Deserialize, Serialize};
+use slint::{spawn_local, Model, SharedString, VecModel};
+use std::{borrow::Borrow, env, rc::Rc, str};
 use url::Url;
 
 static mut HOST: Option<String> = None;
@@ -31,25 +33,63 @@ async fn main() -> Result<()> {
     ui.on_query(move |prompt| {
         let ui = ui_handle.unwrap();
         let prompt = prompt.to_string();
-        let model = ui.get_current_model().to_string();
 
-        dbg!("Querying", &model, &prompt);
         spawn_local(async move {
-            dbg!("Spawning Ollama request");
-            // use tokio_stream::StreamExt;
-            // let mut stream = unsafe { OLLAMA.clone().unwrap() }
-            //     .generate_stream(GenerationRequest::new(model, prompt))
-            //     .await
-            //     .unwrap();
-            //
-            // while let Some(res) = stream.next().await {
-            //     for chunk in res.unwrap().iter() {
-            //         ui.invoke_update_response(chunk.response.to_owned().into());
-            //     }
-            // }
+            let model = ui.get_current_model().to_string();
+            let context: Vec<i32> = ui.get_chat_context().iter().collect();
+            dbg!(&context);
+            let context = if context.is_empty() {
+                None
+            } else {
+                Some(context.iter().map(|e| *e as u16).collect())
+            };
+
+            let mut headers = header::HeaderMap::new();
+            headers.insert(
+                "Content-Type",
+                header::HeaderValue::from_static("application/json"),
+            );
+            let client = reqwest::Client::builder()
+                .default_headers(headers)
+                .build()
+                .unwrap();
+            let payload = Request {
+                model,
+                prompt,
+                stream: true,
+                context,
+            };
+            let payload = serde_json::to_string(&payload)
+                .map_err(|e| e.to_string())
+                .unwrap();
+            let uri = unsafe { format!("{}/api/generate", HOST.clone().unwrap()) };
+            let mut response = client
+                .post(uri)
+                .body(payload)
+                .send()
+                .await
+                .map_err(|e| e.to_string())
+                .unwrap();
+            if !response.status().is_success() {
+                let err = response.text().await.unwrap_or_else(|e| e.to_string());
+                ui.invoke_update_response(err.to_owned().into());
+                ui.invoke_response_done();
+                return;
+            }
+
+            while let Some(current) = response.chunk().await.unwrap() {
+                let chunk: Response =
+                    serde_json::from_str(str::from_utf8(current.borrow()).unwrap()).unwrap();
+                ui.invoke_update_response(chunk.response.to_owned().into());
+                if let Some(context) = chunk.context {
+                    let context = Rc::new(VecModel::from(
+                        context.iter().map(|e| *e as i32).collect::<Vec<i32>>(),
+                    ));
+                    ui.set_chat_context(context.into());
+                }
+            }
 
             ui.invoke_response_done();
-            dbg!("Response received");
         })
         .unwrap();
     });
@@ -110,15 +150,30 @@ fn select_current_model(models: &Vec<String>) -> Result<String> {
     ))
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
-struct Model {
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct AIModel {
     name: String,
     modified_at: String,
     // size: u64,
     // digest: String,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 struct ModelList {
-    models: Vec<Model>,
+    models: Vec<AIModel>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct Request {
+    model: String,
+    prompt: String,
+    stream: bool,
+    context: Option<Vec<u16>>,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+struct Response {
+    response: String,
+    done: bool,
+    context: Option<Vec<u16>>,
 }

@@ -13,6 +13,7 @@ export component AppWindow inherits Window {
 
   in-out property <[string]> ai-models: [];
   in-out property <string> current-model: "Loading...";
+  in-out property <[int]> chat-context: [];
   callback query(string);
 
   function send-prompt() {
