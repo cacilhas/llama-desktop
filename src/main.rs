@@ -150,20 +150,18 @@ fn select_current_model(models: &Vec<String>) -> Result<String> {
     ))
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct AIModel {
     name: String,
     modified_at: String,
-    // size: u64,
-    // digest: String,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct ModelList {
     models: Vec<AIModel>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 struct Request {
     model: String,
     prompt: String,
@@ -171,9 +169,8 @@ struct Request {
     context: Option<Vec<u16>>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize)]
 struct Response {
     response: String,
-    done: bool,
     context: Option<Vec<u16>>,
 }
