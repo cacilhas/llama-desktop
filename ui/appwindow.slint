@@ -2,8 +2,10 @@ import { Button, ComboBox, ScrollView, Spinner, TextEdit } from "std-widgets.sli
 
 export component AppWindow inherits Window {
   title: "Llama Desktop";
-  width: 400px;
-  height: 800px;
+  min-width: 300px;
+  max-width: 600px;
+  min-height: 400px;
+  max-height: 1080px;
   background: #100408;
   padding: 5px;
   default-font-family: "Bellota";
