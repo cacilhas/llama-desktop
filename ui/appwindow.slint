@@ -14,9 +14,11 @@ export component AppWindow inherits Window {
   callback query(string);
 
   function send-prompt() {
-    response.text = "";
-    spinner.visible = true;
-    query(prompt.text);
+    if (!spinner.visible) {
+      response.text = "";
+      spinner.visible = true;
+      query(prompt.text);
+    }
   }
 
   public function update-response(res: string) {
