@@ -90,7 +90,7 @@ async fn query(ui: AppWindow, prompt: String) -> Result<()> {
     Ok(())
 }
 
-fn select_current_model(models: &Vec<String>) -> Result<String> {
+fn select_current_model(models: &[String]) -> Result<String> {
     let mut current_model: Option<String> = None;
     for model in models.clone().iter() {
         if current_model.is_none() && model == "llama2" {
