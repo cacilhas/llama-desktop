@@ -18,7 +18,7 @@ async fn main() -> Result<()> {
     let models = Rc::new(VecModel::from(
         models
             .iter()
-            .map(|model| SharedString::from(model))
+            .map(SharedString::from)
             .collect::<Vec<_>>(),
     ));
 
@@ -98,5 +98,5 @@ fn select_current_model(models: &[String]) -> Result<String> {
             break;
         }
     }
-    Ok(current_model.unwrap_or(models.get(0).ok_or_eyre("no model found")?.to_owned()))
+    Ok(current_model.unwrap_or(models.first().ok_or_eyre("no model found")?.to_owned()))
 }
