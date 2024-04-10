@@ -92,17 +92,11 @@ async fn query(ui: AppWindow, prompt: String) -> Result<()> {
 
 fn select_current_model(models: &[String]) -> Result<String> {
     let mut current_model: Option<String> = None;
-    for model in models.clone().iter() {
+    for model in models.iter() {
         if current_model.is_none() && model == "llama2" {
             current_model = Some(model.to_owned());
             break;
         }
     }
-    Ok(current_model.unwrap_or(
-        models
-            .clone()
-            .get(0)
-            .ok_or_eyre("no model found")?
-            .to_owned(),
-    ))
+    Ok(current_model.unwrap_or(models.get(0).ok_or_eyre("no model found")?.to_owned()))
 }
