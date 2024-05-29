@@ -16,10 +16,7 @@ async fn main() -> Result<()> {
     let current_model = select_current_model(&models)?;
 
     let models = Rc::new(VecModel::from(
-        models
-            .iter()
-            .map(SharedString::from)
-            .collect::<Vec<_>>(),
+        models.iter().map(SharedString::from).collect::<Vec<_>>(),
     ));
 
     let ui = AppWindow::new()?;
