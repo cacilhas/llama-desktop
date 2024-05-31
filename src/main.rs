@@ -21,20 +21,24 @@ fn main() -> Result<(), Box<dyn error::Error>> {
         ..Default::default()
     };
 
-    let font = include_bytes!("assets/bellota.ttf");
-    let font = egui::FontData::from_static(font);
+    let font1 = egui::FontData::from_static(include_bytes!("assets/aclonica.ttf"));
+    let font2 = egui::FontData::from_static(include_bytes!("assets/bellota.ttf"));
     let mut fonts = egui::FontDefinitions::default();
-    fonts.font_data.insert("regular".into(), font);
+    fonts.font_data.insert("arial".into(), font1);
+    fonts.font_data.insert("sans".into(), font2);
+    fonts
+        .families
+        .insert(egui::FontFamily::Name("arial".into()), vec!["arial".into()]);
     fonts
         .families
         .get_mut(&egui::FontFamily::Proportional)
         .unwrap()
-        .insert(0, "regular".into());
+        .insert(0, "sans".into());
 
     eframe::run_native(
         "llama-desktop",
         options,
-        Box::new(|cc| Box::new(LlammaApp::new(cc))),
+        Box::new(|cc| Box::new(LlammaApp::new(cc, fonts))),
     )?;
 
     Ok(())
