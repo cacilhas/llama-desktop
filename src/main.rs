@@ -1,7 +1,3 @@
-extern crate eframe;
-extern crate egui_extras;
-extern crate image;
-
 mod fonts;
 mod protocol;
 mod ui;

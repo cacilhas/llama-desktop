@@ -1,14 +1,18 @@
 use eframe::Frame;
 use eframe::*;
 use egui::*;
+use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
 
+#[derive(Debug)]
 pub struct LlammaApp<'a> {
     logo: ImageSource<'a>,
     title_font: FontId,
     models: Vec<String>,
     selected_model: usize,
     input: String,
+    output: String,
+    cache: CommonMarkCache,
 }
 
 impl<'a> LlammaApp<'a> {
@@ -21,6 +25,8 @@ impl<'a> LlammaApp<'a> {
             models: vec!["one".to_string(), "two".to_string(), "three".to_string()],
             selected_model: 0,
             input: "Why the sky is blue?".to_owned(),
+            output: String::new(),
+            cache: CommonMarkCache::default(),
         }
     }
 }
@@ -80,6 +86,8 @@ impl<'a> App for LlammaApp<'a> {
             ui.add_sized(text_size, TextEdit::multiline(&mut self.input));
 
             ui.vertical_centered_justified(|ui| ui.button("send"));
+
+            CommonMarkViewer::new("output").show(ui, &mut self.cache, &self.output);
         });
     }
 }
