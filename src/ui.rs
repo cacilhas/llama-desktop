@@ -8,6 +8,7 @@ pub struct LlammaApp<'a> {
     title_font: FontId,
     models: Vec<String>,
     selected_model: usize,
+    input: String,
 }
 
 impl<'a> LlammaApp<'a> {
@@ -19,17 +20,18 @@ impl<'a> LlammaApp<'a> {
             title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
             models: vec!["one".to_string(), "two".to_string(), "three".to_string()],
             selected_model: 0,
+            input: "Why the sky is blue?".to_owned(),
         }
     }
 }
 
 impl<'a> App for LlammaApp<'a> {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+        ctx.set_visuals(Visuals::dark());
+
         TopBottomPanel::top("title-panel")
             .exact_height(48.0)
             .show(ctx, |ui| {
-                ui.style_mut().visuals.dark_mode = true;
-
                 ui.columns(3, |uis| {
                     uis[0].with_layout(Layout::left_to_right(Align::Min), |ui| {
                         ui.add(
@@ -71,8 +73,13 @@ impl<'a> App for LlammaApp<'a> {
                     });
                 });
             });
+
         CentralPanel::default().show(ctx, |ui| {
-            ui.style_mut().visuals.dark_mode = true;
+            let size = ui.available_size();
+            let text_size = Vec2::new(size.x, size.y / 3.0);
+            ui.add_sized(text_size, TextEdit::multiline(&mut self.input));
+
+            ui.vertical_centered_justified(|ui| ui.button("send"));
         });
     }
 }
