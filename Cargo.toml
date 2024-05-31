@@ -1,6 +1,6 @@
 [package]
 name        = "llama-desktop"
-version     = "1.0.4"
+version     = "2.0.0"
 authors     = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
 license     = "BSD-3-Clause"
 readme      = "README.md"
@@ -9,7 +9,6 @@ repository  = "https://github.com/cacilhas/llama-desktop"
 keywords    = ["desktop", "ai"]
 description = "Desktop interface for Ollama"
 edition     = "2021"
-build       = "build.rs"
 
 [profile.release]
 opt-level = "s"
@@ -18,11 +17,16 @@ rpath = false
 strip = true
 
 [dependencies]
-eyre = "0.6"
+eframe = "0.27"
 serde_json = "1.0"
-slint = "1.6"
-tokio-stream = "0.1"
-url = "2.5"
+
+[dependencies.image]
+version = "0.25"
+features = ["png"]
+
+[dependencies.egui_extras]
+version = "0.27"
+features = ["image"]
 
 [dependencies.reqwest]
 version = "0.12"
@@ -31,10 +35,3 @@ features = ["json"]
 [dependencies.serde]
 version = "1.0"
 features = ["derive"]
-
-[dependencies.tokio]
-version = "1.35"
-features = ["full"]
-
-[build-dependencies]
-slint-build = "1.6"
