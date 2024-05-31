@@ -5,7 +5,6 @@ use egui_extras::install_image_loaders;
 
 pub struct LlammaApp<'a> {
     logo: ImageSource<'a>,
-    main_font: FontId,
     title_font: FontId,
     models: Vec<String>,
     selected_model: usize,
@@ -17,7 +16,6 @@ impl<'a> LlammaApp<'a> {
         cc.egui_ctx.set_fonts(fonts);
         Self {
             logo: include_image!("assets/logo.png"),
-            main_font: FontId::new(42.0, FontFamily::Proportional),
             title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
             models: vec!["one".to_string(), "two".to_string(), "three".to_string()],
             selected_model: 0,
