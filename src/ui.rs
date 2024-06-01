@@ -24,6 +24,7 @@ struct State {
     selected_model: usize,
     input: String,
     output: String,
+    retreiving: bool,
     context: Vec<i32>,
 }
 
@@ -35,6 +36,7 @@ static mut STATE: State = State {
     selected_model: 0,
     input: "Why the sky is blue?".to_owned(),
     output: String::new(),
+    retreiving: false,
     context: Vec::new(),
 };
 
@@ -137,12 +139,21 @@ impl App for LlamaApp {
                 let send_button = Button::new(bt_text)
                     .rounding(10.0)
                     .shortcut_text("Ctrl+Enter");
-                if send_button.ui(ui).clicked() {
-                    RUNTIME.spawn(send());
+                if STATE.read().retreiving {
+                    ui.add_enabled(false, send_button);
+                } else {
+                    if send_button.ui(ui).clicked() {
+                        STATE.write().retreiving = true;
+                        RUNTIME.spawn(send());
+                    }
                 }
             });
 
-            CommonMarkViewer::new("output").show(ui, &mut MD_CACHE.write(), &STATE.read().output);
+            CommonMarkViewer::new("output").show_scrollable(
+                ui,
+                &mut MD_CACHE.write(),
+                &STATE.read().output,
+            );
         });
     }
 }
@@ -182,7 +193,7 @@ async fn send() {
     }
 
     STATE.write().output.clear();
-    while let Some(current) = response.chunk().await.unwrap() {
+    'read: while let Some(current) = response.chunk().await.unwrap() {
         let chunk: Response =
             serde_json::from_str(std::str::from_utf8(current.borrow()).unwrap()).unwrap();
         {
@@ -191,6 +202,10 @@ async fn send() {
             if let Some(context) = chunk.context {
                 state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
             }
+            if chunk.done {
+                break 'read;
+            }
         }
     }
+    STATE.write().retreiving = false;
 }

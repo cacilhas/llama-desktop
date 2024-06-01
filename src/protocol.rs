@@ -23,4 +23,5 @@ pub struct Request {
 pub struct Response {
     pub response: String,
     pub context: Option<Vec<u16>>,
+    pub done: bool,
 }
