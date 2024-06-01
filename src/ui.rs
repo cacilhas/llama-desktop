@@ -1,14 +1,16 @@
-use std::{thread, time::Duration};
+use std::{borrow::Borrow, thread, time::Duration};
 
 use eframe::Frame;
 use eframe::*;
 use egui::*;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
+use reqwest::header;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
 use crate::ollama;
+use crate::protocol::{Request, Response};
 
 #[derive(Debug)]
 pub struct LlamaApp;
@@ -21,6 +23,7 @@ struct State {
     selected_model: usize,
     input: String,
     output: String,
+    context: Vec<i32>,
 }
 
 #[dynamic]
@@ -31,6 +34,7 @@ static mut STATE: State = State {
     selected_model: 0,
     input: "Why the sky is blue?".to_owned(),
     output: String::new(),
+    context: Vec::new(),
 };
 
 #[dynamic]
@@ -68,7 +72,6 @@ impl LlamaApp {
 
 impl App for LlamaApp {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
-        let mut state = STATE.write();
         ctx.set_visuals(Visuals::dark());
 
         TopBottomPanel::top("title-panel")
@@ -77,7 +80,7 @@ impl App for LlamaApp {
                 ui.columns(3, |uis| {
                     uis[0].with_layout(Layout::left_to_right(Align::Min), |ui| {
                         ui.add(
-                            Image::new(state.logo.clone())
+                            Image::new(STATE.read().logo.clone())
                                 .fit_to_exact_size(Vec2 { x: 64.0, y: 64.0 }),
                         );
                     });
@@ -85,12 +88,13 @@ impl App for LlamaApp {
                     uis[1].with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.label(
                             RichText::new("Llama Desktop")
-                                .font(state.title_font.clone())
+                                .font(STATE.read().title_font.clone())
                                 .strong(),
                         );
                     });
 
                     uis[2].with_layout(Layout::right_to_left(Align::Max), |ui| {
+                        let mut state = STATE.write();
                         ComboBox::from_id_source(Id::new("models"))
                             .selected_text(&state.models[state.selected_model])
                             .show_ui(ui, |ui| {
@@ -117,7 +121,7 @@ impl App for LlamaApp {
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
             let text_size = Vec2::new(size.x, size.y / 3.0);
-            ui.add_sized(text_size, TextEdit::multiline(&mut state.input));
+            ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input));
 
             ui.vertical_centered_justified(|ui| {
                 if ui.button("send").clicked() {
@@ -125,9 +129,55 @@ impl App for LlamaApp {
                 }
             });
 
-            CommonMarkViewer::new("output").show(ui, &mut MD_CACHE.write(), &state.output);
+            CommonMarkViewer::new("output").show(ui, &mut MD_CACHE.write(), &STATE.read().output);
         });
     }
 }
 
-async fn send() {}
+async fn send() {
+    let context = STATE.read().context.clone();
+    let context: Option<Vec<u16>> = if context.is_empty() {
+        None
+    } else {
+        Some(context.iter().map(|e| *e as u16).collect())
+    };
+
+    let mut headers = header::HeaderMap::new();
+    headers.insert(
+        "Content-Type",
+        header::HeaderValue::from_static("application/json"),
+    );
+    let client = reqwest::Client::builder()
+        .default_headers(headers)
+        .build()
+        .unwrap();
+    let payload = {
+        let state = STATE.read();
+        Request {
+            model: state.models[state.selected_model].to_owned(),
+            prompt: state.input.to_owned(),
+            stream: true,
+            context,
+        }
+    };
+    let payload = serde_json::to_string(&payload).unwrap();
+    let uri = ollama::path("/api/generate");
+    let mut response = client.post(uri).body(payload).send().await.unwrap();
+    if !response.status().is_success() {
+        STATE.write().output = response.text().await.unwrap_or_else(|e| e.to_string());
+        return;
+    }
+
+    STATE.write().output.clear();
+    while let Some(current) = response.chunk().await.unwrap() {
+        let chunk: Response =
+            serde_json::from_str(std::str::from_utf8(current.borrow()).unwrap()).unwrap();
+        {
+            let mut state = STATE.write();
+            state.output += &chunk.response;
+            if let Some(context) = chunk.context {
+                state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
+            }
+        }
+    }
+}
