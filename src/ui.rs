@@ -34,7 +34,7 @@ static mut STATE: State = State {
     logo: include_image!("assets/logo.png"),
     title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
     models: Vec::new(),
-    selected_model: 0,
+    selected_model: usize::max_value(),
     input: "Why the sky is blue?".to_owned(),
     output: String::new(),
     retreiving: false,
@@ -75,9 +75,17 @@ impl LlamaApp {
 }
 
 impl App for LlamaApp {
-    fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
+    fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         ctx.set_visuals(Visuals::dark());
         set_font_size(ctx, 20.0);
+        if STATE.read().selected_model > STATE.read().models.len() {
+            if let Some(storage) = frame.storage() {
+                let selected_model = storage
+                    .get_string("selected-model")
+                    .unwrap_or("0".to_string());
+                STATE.write().selected_model = selected_model.parse().unwrap_or(0);
+            }
+        }
 
         TopBottomPanel::top("title-panel")
             .exact_height(48.0)
@@ -109,7 +117,14 @@ impl App for LlamaApp {
                                         selected = idx;
                                     }
                                 }
-                                state.selected_model = selected;
+                                if selected != state.selected_model {
+                                    state.selected_model = selected;
+                                    if let Some(storage) = frame.storage_mut() {
+                                        storage
+                                            .set_string("selected-model", format!("{}", selected));
+                                        storage.flush();
+                                    }
+                                }
                             });
                         ui.label(
                             RichText::new("Models:")
@@ -127,7 +142,7 @@ impl App for LlamaApp {
             ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input));
 
             ui.vertical_centered_justified(|ui| {
-                let mut text = LayoutJob::simple(
+                let text = LayoutJob::simple(
                     "Send".to_owned(),
                     FontId::new(20.0, FontFamily::Proportional),
                     Color32::WHITE,
