@@ -158,12 +158,21 @@ impl App for LlamaApp {
                     }
                 }
             });
-
             CommonMarkViewer::new("output").show_scrollable(
                 ui,
                 &mut MD_CACHE.write(),
                 &STATE.read().output,
             );
+
+            if STATE.read().retreiving {
+                Spinner::new().paint_at(
+                    ui,
+                    Rect::from_min_max(
+                        Pos2::new(size.x / 2.0 - 32.0, size.y / 2.0 - 32.0),
+                        Pos2::new(size.x / 2.0 + 32.0, size.y / 2.0 + 32.0),
+                    ),
+                );
+            }
         });
     }
 }
