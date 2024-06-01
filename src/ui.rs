@@ -1,5 +1,6 @@
 use std::{borrow::Borrow, thread, time::Duration};
 
+use eframe::egui::text::LayoutJob;
 use eframe::Frame;
 use eframe::*;
 use egui::*;
@@ -121,10 +122,22 @@ impl App for LlamaApp {
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
             let text_size = Vec2::new(size.x, size.y / 3.0);
-            ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input));
+            ui.add_sized(
+                text_size,
+                TextEdit::multiline(&mut STATE.write().input)
+                    .font(FontId::new(20.0, FontFamily::Proportional)),
+            );
 
             ui.vertical_centered_justified(|ui| {
-                if ui.button("send").clicked() {
+                let bt_text = LayoutJob::simple_singleline(
+                    "Send".to_owned(),
+                    FontId::new(20.0, FontFamily::Proportional),
+                    Color32::from_rgb(0xff, 0xff, 0xff),
+                );
+                let send_button = Button::new(bt_text)
+                    .rounding(10.0)
+                    .shortcut_text("Ctrl+Enter");
+                if send_button.ui(ui).clicked() {
                     RUNTIME.spawn(send());
                 }
             });
