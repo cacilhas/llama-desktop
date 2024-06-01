@@ -1,17 +1,21 @@
+#[macro_use]
+extern crate static_init;
+
 mod fonts;
+mod ollama;
 mod protocol;
 mod ui;
 
 use crate::fonts::initialize_fonts;
-use crate::ui::LlammaApp;
+use crate::ui::LlamaApp;
 use eframe::egui;
-use std::error;
 
-fn main() -> Result<(), Box<dyn error::Error>> {
+fn main() {
     let viewport = egui::ViewportBuilder::default()
         .with_title("Llama Desktop")
         .with_inner_size([800.0, 1200.0]);
 
+    ollama::init();
     let fonts = initialize_fonts();
     let options = eframe::NativeOptions {
         viewport,
@@ -23,8 +27,7 @@ fn main() -> Result<(), Box<dyn error::Error>> {
     eframe::run_native(
         "llama-desktop",
         options,
-        Box::new(|cc| Box::new(LlammaApp::new(cc, fonts))),
-    )?;
-
-    Ok(())
+        Box::new(|cc| Box::new(LlamaApp::new(cc, fonts))),
+    )
+    .unwrap();
 }
