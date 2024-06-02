@@ -33,9 +33,14 @@ fn get_ollama_host() -> String {
     let uri = match Url::parse(&uri) {
         Ok(uri) => uri,
         Err(err) => {
-            eprintln!("error parsing {}: {:?}", uri, err);
-            eprintln!("fallback to {}", DEFAULT_HOST);
-            eprintln!("please review the content of environment variable OLLAMA_HOST");
+            eprintln!(
+                "error parsing \x1b[33m{}\x1b[0m: \x1b[31;1m{:?}\x1b[0m",
+                uri, err
+            );
+            eprintln!("fallback to \x1b[33;1m{}\x1b[0m", DEFAULT_HOST);
+            eprintln!(
+                "please review the content of environment variable \x1b[32mOLLAMA_HOST\x1b[0m"
+            );
             panic(Url::parse(DEFAULT_HOST))
         }
     };
@@ -61,7 +66,10 @@ where
     match value {
         Ok(value) => value,
         Err(err) => {
-            eprintln!("\x1b[31;1m[PANIC] couldn't initialise:\x1b[0m {:?}", err);
+            eprintln!(
+                "\x1b[31;1m[PANIC] couldn't initialise:\x1b[0m \x1b[1m{:?}\x1b[0m",
+                err
+            );
             process::exit(1);
         }
     }
