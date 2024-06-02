@@ -115,6 +115,13 @@ impl App for LlamaApp {
                     ui.label("quit");
                 });
 
+                if !STATE.read().retreiving
+                    && ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter))
+                {
+                    STATE.write().retreiving = true;
+                    RUNTIME.spawn(send());
+                }
+
                 if ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Q)) {
                     process::exit(0);
                 }
@@ -126,21 +133,6 @@ impl App for LlamaApp {
             ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
                 .request_focus();
 
-            ui.vertical_centered_justified(|ui| {
-                let send_button = Button::new("Send")
-                    .rounding(10.0)
-                    .shortcut_text("Ctrl+Enter");
-                if STATE.read().retreiving {
-                    ui.add_enabled(false, send_button);
-                } else {
-                    if send_button.ui(ui).clicked()
-                        || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter))
-                    {
-                        STATE.write().retreiving = true;
-                        RUNTIME.spawn(send());
-                    }
-                }
-            });
             CommonMarkViewer::new("output").show_scrollable(
                 ui,
                 &mut MD_CACHE.write(),
