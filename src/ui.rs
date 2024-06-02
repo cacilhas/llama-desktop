@@ -192,6 +192,7 @@ async fn send() {
         .write()
         .output
         .push_str(&format_input_to_output(input.clone()));
+    STATE.write().output.push_str("\n\n");
     STATE.write().input.clear();
 
     let mut headers = header::HeaderMap::new();
@@ -236,6 +237,6 @@ async fn send() {
             }
         }
     }
-    STATE.write().retreiving = false;
     STATE.write().output.push_str(HR);
+    STATE.write().retreiving = false;
 }
