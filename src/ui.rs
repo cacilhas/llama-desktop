@@ -75,7 +75,7 @@ impl App for LlamaApp {
                     uis[1].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let mut state = STATE.write();
                         ComboBox::from_label(
-                            RichText::new("Models:")
+                            RichText::new("Model:")
                                 .font(state.title_font.clone())
                                 .color(Color32::from_rgb(0x54, 0x10, 0x21))
                                 .strong(),
