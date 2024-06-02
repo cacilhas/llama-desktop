@@ -15,7 +15,8 @@ use eframe::egui;
 fn main() {
     let viewport = egui::ViewportBuilder::default()
         .with_title("Llama Desktop")
-        .with_inner_size([800.0, 1200.0]);
+        .with_inner_size([800.0, 1200.0])
+        .with_min_inner_size([800.0, 600.0]);
 
     let fonts = initialize_fonts();
     let options = eframe::NativeOptions {

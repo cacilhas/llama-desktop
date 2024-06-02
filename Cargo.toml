@@ -1,6 +1,6 @@
 [package]
 name        = "llama-desktop"
-version     = "2.1.1"
+version     = "2.1.2"
 authors     = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
 license     = "BSD-3-Clause"
 readme      = "README.md"
