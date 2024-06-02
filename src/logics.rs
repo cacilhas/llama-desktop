@@ -80,6 +80,7 @@ pub async fn send() {
         let err = response.text().await.unwrap_or_else(|e| e.to_string());
         let res = format!("\n\n## ERROR\n{}{}", err, HR);
         STATE.write().output.push_str(&res);
+        STATE.write().retreiving = false;
         return;
     }
 
