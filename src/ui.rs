@@ -1,8 +1,8 @@
 use std::{borrow::Borrow, thread, time::Duration};
 
-use eframe::egui::text::LayoutJob;
 use eframe::Frame;
 use eframe::*;
+use egui::text::LayoutJob;
 use egui::*;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
@@ -28,6 +28,15 @@ struct State {
     output: String,
     retreiving: bool,
     context: Vec<i32>,
+}
+
+impl State {
+    fn reset(&mut self) {
+        self.input = "Why the sky is blue?".to_owned();
+        self.output = String::new();
+        self.retreiving = false;
+        self.context = Vec::new();
+    }
 }
 
 #[dynamic]
@@ -175,6 +184,10 @@ impl App for LlamaApp {
                         Pos2::new(size.x / 2.0 + 32.0, size.y / 2.0 + 32.0),
                     ),
                 );
+            } else {
+                if ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::R)) {
+                    STATE.write().reset();
+                }
             }
         });
     }
