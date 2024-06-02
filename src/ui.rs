@@ -153,7 +153,9 @@ impl App for LlamaApp {
                 if STATE.read().retreiving {
                     ui.add_enabled(false, send_button);
                 } else {
-                    if send_button.ui(ui).clicked() {
+                    if send_button.ui(ui).clicked()
+                        || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter))
+                    {
                         STATE.write().retreiving = true;
                         RUNTIME.spawn(send());
                     }
