@@ -1,8 +1,7 @@
-use std::{borrow::Borrow, thread, time::Duration};
+use std::{borrow::Borrow, process, thread, time::Duration};
 
 use eframe::Frame;
 use eframe::*;
-use egui::text::LayoutJob;
 use egui::*;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
@@ -87,6 +86,7 @@ impl LlamaApp {
 impl App for LlamaApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         ctx.set_visuals(Visuals::dark());
+
         set_font_size(ctx, 20.0);
         if STATE.read().selected_model > STATE.read().models.len() {
             if let Some(storage) = frame.storage() {
@@ -146,19 +146,34 @@ impl App for LlamaApp {
                 });
             });
 
+        TopBottomPanel::bottom("footer")
+            .exact_height(32.0)
+            .show(ctx, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("Ctrl+Enter").strong());
+                    ui.label("send");
+                    ui.add_space(120.0);
+                    ui.label(RichText::new("Ctrl+R").strong());
+                    ui.label("reset");
+                    ui.add_space(120.0);
+                    ui.label(RichText::new("Ctrl+Q").strong());
+                    ui.label("quit");
+                });
+
+                if ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Q)) {
+                    process::exit(0);
+                }
+            });
+
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
             let text_size = Vec2::new(size.x, size.y / 3.0);
             ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input));
 
             ui.vertical_centered_justified(|ui| {
-                let text = LayoutJob::simple(
-                    "Send".to_owned(),
-                    FontId::new(20.0, FontFamily::Proportional),
-                    Color32::WHITE,
-                    8.0,
-                );
-                let send_button = Button::new(text).rounding(10.0).shortcut_text("Ctrl+Enter");
+                let send_button = Button::new("Send")
+                    .rounding(10.0)
+                    .shortcut_text("Ctrl+Enter");
                 if STATE.read().retreiving {
                     ui.add_enabled(false, send_button);
                 } else {
@@ -180,8 +195,8 @@ impl App for LlamaApp {
                 Spinner::new().paint_at(
                     ui,
                     Rect::from_min_max(
-                        Pos2::new(size.x / 2.0 - 32.0, size.y / 2.0 - 32.0),
-                        Pos2::new(size.x / 2.0 + 32.0, size.y / 2.0 + 32.0),
+                        Pos2::new(size.x / 2.0 - 16.0, size.y / 2.0 - 16.0),
+                        Pos2::new(size.x / 2.0 + 16.0, size.y / 2.0 + 16.0),
                     ),
                 );
             } else {
