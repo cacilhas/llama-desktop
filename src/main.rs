@@ -17,7 +17,6 @@ fn main() {
         .with_title("Llama Desktop")
         .with_inner_size([800.0, 1200.0]);
 
-    ollama::init();
     let fonts = initialize_fonts();
     let options = eframe::NativeOptions {
         viewport,
