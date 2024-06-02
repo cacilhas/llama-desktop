@@ -55,7 +55,7 @@ impl App for LlamaApp {
             }
         }
 
-        TopBottomPanel::top("title-panel")
+        TopBottomPanel::top("header")
             .exact_height(48.0)
             .show(ctx, |ui| {
                 ui.columns(2, |uis| {
@@ -104,25 +104,42 @@ impl App for LlamaApp {
         TopBottomPanel::bottom("footer")
             .exact_height(28.0)
             .show(ctx, |ui| {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Ctrl+Enter").strong()).clicked();
-                    ui.label("send");
-                    ui.add_space(120.0);
-                    ui.label(RichText::new("Ctrl+R").strong());
-                    ui.label("reset");
-                    ui.add_space(120.0);
-                    ui.label(RichText::new("Ctrl+Q").strong());
-                    ui.label("quit");
+                let mut sig_send = false;
+                let mut sig_reset = false;
+                let mut sig_quit = false;
+
+                ui.columns(6, |uis| {
+                    uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        sig_send |= ui.label(RichText::new("Ctrl+Enter").strong()).clicked();
+                    });
+                    uis[1].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        sig_send |= ui.label("send").clicked();
+                    });
+                    uis[2].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        sig_reset |= ui.label(RichText::new("Ctrl+R").strong()).clicked();
+                    });
+                    uis[3].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        sig_reset |= ui.label("reset").clicked();
+                    });
+                    uis[4].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        sig_quit |= ui.label(RichText::new("Ctrl+Q").strong()).clicked();
+                    });
+                    uis[5].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        sig_quit |= ui.label("quit").clicked();
+                    });
                 });
 
-                if !STATE.read().retreiving
-                    && ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter))
-                {
-                    STATE.write().retreiving = true;
-                    RUNTIME.spawn(send());
+                if !STATE.read().retreiving {
+                    if sig_send || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter)) {
+                        STATE.write().retreiving = true;
+                        RUNTIME.spawn(send());
+                    }
+                    if sig_reset || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::R)) {
+                        STATE.write().reset();
+                    }
                 }
 
-                if ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Q)) {
+                if sig_quit || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Q)) {
                     process::exit(0);
                 }
             });
@@ -152,10 +169,6 @@ impl App for LlamaApp {
                         Pos2::new(size.x / 2.0 + 16.0, size.y / 2.0 + 16.0),
                     ),
                 );
-            } else {
-                if ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::R)) {
-                    STATE.write().reset();
-                }
             }
         });
     }
