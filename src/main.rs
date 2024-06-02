@@ -2,6 +2,7 @@
 extern crate static_init;
 
 mod fonts;
+mod helpers;
 mod ollama;
 mod protocol;
 mod ui;

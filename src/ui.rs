@@ -11,6 +11,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
 
 use crate::fonts::set_font_size;
+use crate::helpers::{format_input_to_output, HR};
 use crate::ollama;
 use crate::protocol::{Request, Response};
 
@@ -184,6 +185,12 @@ async fn send() {
     } else {
         Some(context.iter().map(|e| *e as u16).collect())
     };
+    let input = STATE.read().input.to_owned();
+    STATE
+        .write()
+        .output
+        .push_str(&format_input_to_output(input.clone()));
+    STATE.write().input.clear();
 
     let mut headers = header::HeaderMap::new();
     headers.insert(
@@ -198,7 +205,7 @@ async fn send() {
         let state = STATE.read();
         Request {
             model: state.models[state.selected_model].to_owned(),
-            prompt: state.input.to_owned(),
+            prompt: input,
             stream: true,
             context,
         }
@@ -207,17 +214,18 @@ async fn send() {
     let uri = ollama::path("/api/generate");
     let mut response = client.post(uri).body(payload).send().await.unwrap();
     if !response.status().is_success() {
-        STATE.write().output = response.text().await.unwrap_or_else(|e| e.to_string());
+        let err = response.text().await.unwrap_or_else(|e| e.to_string());
+        let res = format!("\n\n## ERROR\n{}{}", err, HR);
+        STATE.write().output.push_str(&res);
         return;
     }
 
-    STATE.write().output.clear();
     'read: while let Some(current) = response.chunk().await.unwrap() {
         let chunk: Response =
             serde_json::from_str(std::str::from_utf8(current.borrow()).unwrap()).unwrap();
         {
             let mut state = STATE.write();
-            state.output += &chunk.response;
+            state.output.push_str(&chunk.response);
             if let Some(context) = chunk.context {
                 state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
             }
@@ -227,4 +235,5 @@ async fn send() {
         }
     }
     STATE.write().retreiving = false;
+    STATE.write().output.push_str(HR);
 }
