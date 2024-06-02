@@ -130,8 +130,13 @@ impl App for LlamaApp {
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
             let text_size = Vec2::new(size.x, size.y / 3.0);
-            ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
-                .request_focus();
+            ScrollArea::vertical()
+                .max_height(text_size.y)
+                .auto_shrink([false; 2])
+                .show(ui, |ui| {
+                    ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
+                        .request_focus();
+                });
 
             CommonMarkViewer::new("output").show_scrollable(
                 ui,
