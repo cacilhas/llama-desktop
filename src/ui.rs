@@ -59,10 +59,10 @@ impl App for LlamaApp {
             .exact_height(48.0)
             .show(ctx, |ui| {
                 ui.columns(2, |uis| {
-                    uis[0].with_layout(Layout::left_to_right(Align::Min), |ui| {
+                    uis[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.add(
                             Image::new(STATE.read().logo.clone())
-                                .fit_to_exact_size(Vec2 { x: 64.0, y: 64.0 }),
+                                .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
                         );
 
                         ui.label(
@@ -72,43 +72,40 @@ impl App for LlamaApp {
                         );
                     });
 
-                    uis[1].with_layout(Layout::right_to_left(Align::Max), |ui| {
+                    uis[1].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let mut state = STATE.write();
-                        ComboBox::from_id_source(Id::new("models"))
-                            .selected_text(&state.models[state.selected_model])
-                            .show_ui(ui, |ui| {
-                                let mut selected = state.selected_model;
-                                for (idx, opt) in state.models.iter().enumerate() {
-                                    let value =
-                                        ui.selectable_value(&mut selected, idx, opt.clone());
-                                    if value.clicked() {
-                                        selected = idx;
-                                    }
-                                }
-                                if selected != state.selected_model {
-                                    state.selected_model = selected;
-                                    if let Some(storage) = frame.storage_mut() {
-                                        storage
-                                            .set_string("selected-model", format!("{}", selected));
-                                        storage.flush();
-                                    }
-                                }
-                            });
-                        ui.label(
+                        ComboBox::from_label(
                             RichText::new("Models:")
                                 .font(state.title_font.clone())
                                 .color(Color32::from_rgb(0x54, 0x10, 0x21))
                                 .strong(),
-                        );
+                        )
+                        .selected_text(&state.models[state.selected_model])
+                        .show_ui(ui, |ui| {
+                            let mut selected = state.selected_model;
+                            for (idx, opt) in state.models.iter().enumerate() {
+                                let value = ui.selectable_value(&mut selected, idx, opt.clone());
+                                if value.clicked() {
+                                    selected = idx;
+                                }
+                            }
+                            if selected != state.selected_model {
+                                state.selected_model = selected;
+                                if let Some(storage) = frame.storage_mut() {
+                                    storage.set_string("selected-model", format!("{}", selected));
+                                    storage.flush();
+                                }
+                            }
+                        });
                     });
                 });
             });
 
         TopBottomPanel::bottom("footer")
-            .exact_height(32.0)
+            .exact_height(28.0)
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Ctrl+Enter").strong());
+                    ui.label(RichText::new("Ctrl+Enter").strong()).clicked();
                     ui.label("send");
                     ui.add_space(120.0);
                     ui.label(RichText::new("Ctrl+R").strong());
