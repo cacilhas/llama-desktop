@@ -1,5 +1,5 @@
 [MIT]: https://github.com/cacilhas/llama-desktop/blob/master/COPYING
-[Llama]: https://raw.githubusercontent.com/cacilhas/llama-desktop/master/ui/icon.png
+[Llama]: https://raw.githubusercontent.com/cacilhas/llama-desktop/master/src/assets/logo.png
 [Ollama]: https://ollama.ai/
 
 # Llamma Desktop
