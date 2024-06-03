@@ -13,12 +13,24 @@ Llama Desktop reads the Ollama service URI from the environment variable
 
 ## Installation
 
-```sh
-# In case you have an NVIDIA GPU and want to run Ollama locally
-curl -fsSL https://ollama.com/install.sh | sh
+### Ollama
 
-# Actual installation command
+In case you have an NVIDIA GPU and want to run Ollama locally:
+
+```sh
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+### Last stable release
+
+```sh
 cargo install llama-desktop
+```
+
+### Development version
+
+```sh
+cargo install git@github.com:cacilhas/llama-desktop.git
 ```
 
 ## License
