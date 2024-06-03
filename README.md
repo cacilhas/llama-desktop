@@ -19,6 +19,10 @@ In case you have an NVIDIA GPU and want to run Ollama locally:
 
 ```sh
 curl -fsSL https://ollama.com/install.sh | sh
+systemctl enable ollama
+systemctl start ollama
+ollama pull mistral:latest
+ollama pull phind-codellama:latest
 ```
 
 ### Last stable release
