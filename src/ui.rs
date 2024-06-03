@@ -14,12 +14,20 @@ use toml::Table;
 
 #[derive(Debug)]
 pub struct LlamaApp {
-    pub logo: ImageSource<'static>,
-    pub horizontal: ImageSource<'static>,
-    pub vertical: ImageSource<'static>,
-    pub title_font: FontId,
-    pub small_font: FontId,
-    pub horizontally: bool,
+    logo: ImageSource<'static>,
+    horizontal: ImageSource<'static>,
+    vertical: ImageSource<'static>,
+    title_font: FontId,
+    small_font: FontId,
+    box_layout: BoxLayout,
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+enum BoxLayout {
+    Horizontally,
+    Vertically,
+    #[default]
+    NotSet,
 }
 
 /// LlamaApp is just a proxy for a module
@@ -51,7 +59,7 @@ impl LlamaApp {
             vertical: include_image!("assets/vertical.png"),
             title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
             small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
-            horizontally: false,
+            box_layout: BoxLayout::default(),
         }
     }
 }
@@ -67,6 +75,15 @@ impl App for LlamaApp {
                     .get_string("selected-model")
                     .unwrap_or("0".to_string());
                 STATE.write().selected_model = selected_model.parse().unwrap_or(0);
+            }
+        }
+        if self.box_layout == BoxLayout::NotSet {
+            if let Some(storage) = frame.storage() {
+                if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
+                    self.box_layout = BoxLayout::Horizontally;
+                } else {
+                    self.box_layout = BoxLayout::Vertically;
+                }
             }
         }
 
@@ -155,8 +172,11 @@ impl App for LlamaApp {
                         .ui(ui)
                         .clicked()
                         {
-                            self.horizontally = false;
-                            println!("{}", self.horizontally);
+                            self.box_layout = BoxLayout::Vertically;
+                            if let Some(storage) = frame.storage_mut() {
+                                storage.set_string("layout", "V".to_string());
+                                storage.flush();
+                            }
                         }
                     });
                     uis[7].with_layout(Layout::left_to_right(Align::Center), |ui| {
@@ -167,8 +187,11 @@ impl App for LlamaApp {
                         .ui(ui)
                         .clicked()
                         {
-                            self.horizontally = true;
-                            println!("{}", self.horizontally);
+                            self.box_layout = BoxLayout::Horizontally;
+                            if let Some(storage) = frame.storage_mut() {
+                                storage.set_string("layout", "H".to_string());
+                                storage.flush();
+                            }
                         }
                     });
                 });
@@ -191,10 +214,33 @@ impl App for LlamaApp {
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
 
-            if self.horizontally {
-                // Dispose text viewers horizontally
-                let text_size = Vec2::new(size.x * 3.0 / 7.0, size.y);
-                ui.horizontal_top(|ui| {
+            match self.box_layout {
+                BoxLayout::Horizontally => {
+                    // Dispose text viewers horizontally
+                    let text_size = Vec2::new(size.x * 3.0 / 7.0, size.y);
+                    ui.horizontal_top(|ui| {
+                        ScrollArea::vertical()
+                            .max_width(text_size.x)
+                            .max_height(text_size.y)
+                            .auto_shrink([false; 2])
+                            .show(ui, |ui| {
+                                ui.add_sized(
+                                    text_size,
+                                    TextEdit::multiline(&mut STATE.write().input),
+                                )
+                                .request_focus();
+                            });
+
+                        CommonMarkViewer::new("output").show_scrollable(
+                            ui,
+                            &mut MD_CACHE.write(),
+                            &STATE.read().output,
+                        );
+                    });
+                }
+                BoxLayout::Vertically => {
+                    // Dispose text viewers vertically (default)
+                    let text_size = Vec2::new(size.x, size.y / 3.0);
                     ScrollArea::vertical()
                         .max_width(text_size.x)
                         .max_height(text_size.y)
@@ -209,24 +255,8 @@ impl App for LlamaApp {
                         &mut MD_CACHE.write(),
                         &STATE.read().output,
                     );
-                });
-            } else {
-                // Dispose text viewers vertically (default)
-                let text_size = Vec2::new(size.x, size.y / 3.0);
-                ScrollArea::vertical()
-                    .max_width(text_size.x)
-                    .max_height(text_size.y)
-                    .auto_shrink([false; 2])
-                    .show(ui, |ui| {
-                        ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
-                            .request_focus();
-                    });
-
-                CommonMarkViewer::new("output").show_scrollable(
-                    ui,
-                    &mut MD_CACHE.write(),
-                    &STATE.read().output,
-                );
+                }
+                BoxLayout::NotSet => (),
             }
 
             if STATE.read().retreiving {
