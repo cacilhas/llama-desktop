@@ -24,16 +24,6 @@ impl State {
     }
 }
 
-#[dynamic]
-pub static mut STATE: State = State {
-    models: Vec::new(),
-    selected_model: usize::max_value(),
-    input: "Why the sky is blue?".to_owned(),
-    output: String::new(),
-    retreiving: false,
-    context: Vec::new(),
-};
-
 pub async fn send() {
     let context = STATE.read().context.clone();
     let context: Option<Vec<u16>> = if context.is_empty() {
@@ -95,3 +85,13 @@ pub async fn send() {
     STATE.write().output.push_str(HR);
     STATE.write().retreiving = false;
 }
+
+#[dynamic]
+pub static mut STATE: State = State {
+    models: Vec::new(),
+    selected_model: usize::max_value(),
+    input: "Why the sky is blue?".to_owned(),
+    output: String::new(),
+    retreiving: false,
+    context: Vec::new(),
+};
