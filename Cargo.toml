@@ -1,8 +1,8 @@
 [package]
 name        = "llama-desktop"
-version     = "2.2.0"
+version     = "2.2.1"
 authors     = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
-license     = "BSD-3-Clause"
+license     = "MIT"
 readme      = "README.md"
 homepage    = "https://crates.io/crates/llama-desktop"
 repository  = "https://github.com/cacilhas/llama-desktop"
