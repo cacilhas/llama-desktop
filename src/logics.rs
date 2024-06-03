@@ -3,14 +3,10 @@ use std::borrow::Borrow;
 use crate::helpers::{format_input_to_output, HR};
 use crate::ollama;
 use crate::protocol::{Request, Response};
-use eframe::*;
-use egui::*;
 use reqwest::header;
 
 #[derive(Debug)]
 pub struct State {
-    pub logo: ImageSource<'static>,
-    pub title_font: FontId,
     pub models: Vec<String>,
     pub selected_model: usize,
     pub input: String,
@@ -27,18 +23,6 @@ impl State {
         self.context = Vec::new();
     }
 }
-
-#[dynamic]
-pub static mut STATE: State = State {
-    logo: include_image!("assets/logo.png"),
-    title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
-    models: Vec::new(),
-    selected_model: usize::max_value(),
-    input: "Why the sky is blue?".to_owned(),
-    output: String::new(),
-    retreiving: false,
-    context: Vec::new(),
-};
 
 pub async fn send() {
     let context = STATE.read().context.clone();
@@ -101,3 +85,13 @@ pub async fn send() {
     STATE.write().output.push_str(HR);
     STATE.write().retreiving = false;
 }
+
+#[dynamic]
+pub static mut STATE: State = State {
+    models: Vec::new(),
+    selected_model: usize::max_value(),
+    input: "Why the sky is blue?".to_owned(),
+    output: String::new(),
+    retreiving: false,
+    context: Vec::new(),
+};

@@ -10,9 +10,25 @@ use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
+use toml::Table;
 
 #[derive(Debug)]
-pub struct LlamaApp;
+pub struct LlamaApp {
+    logo: ImageSource<'static>,
+    horizontal: ImageSource<'static>,
+    vertical: ImageSource<'static>,
+    title_font: FontId,
+    small_font: FontId,
+    box_layout: BoxLayout,
+}
+
+#[derive(Debug, Default, Eq, PartialEq)]
+enum BoxLayout {
+    Horizontally,
+    Vertically,
+    #[default]
+    NotSet,
+}
 
 /// LlamaApp is just a proxy for a module
 impl LlamaApp {
@@ -37,7 +53,14 @@ impl LlamaApp {
             }
         };
 
-        Self
+        Self {
+            logo: include_image!("assets/logo.png"),
+            horizontal: include_image!("assets/horizontal.png"),
+            vertical: include_image!("assets/vertical.png"),
+            title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
+            small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
+            box_layout: BoxLayout::default(),
+        }
     }
 }
 
@@ -54,6 +77,15 @@ impl App for LlamaApp {
                 STATE.write().selected_model = selected_model.parse().unwrap_or(0);
             }
         }
+        if self.box_layout == BoxLayout::NotSet {
+            if let Some(storage) = frame.storage() {
+                if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
+                    self.box_layout = BoxLayout::Horizontally;
+                } else {
+                    self.box_layout = BoxLayout::Vertically;
+                }
+            }
+        }
 
         TopBottomPanel::top("header")
             .exact_height(48.0)
@@ -61,14 +93,19 @@ impl App for LlamaApp {
                 ui.columns(2, |uis| {
                     uis[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.add(
-                            Image::new(STATE.read().logo.clone())
+                            Image::new(self.logo.clone())
                                 .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
                         );
 
                         ui.label(
                             RichText::new("Llama Desktop")
-                                .font(STATE.read().title_font.clone())
+                                .font(self.title_font.clone())
                                 .strong(),
+                        );
+
+                        ui.label(
+                            RichText::new(&format!("v{}", VERSION.to_string()))
+                                .font(self.small_font.clone()),
                         );
                     });
 
@@ -76,7 +113,7 @@ impl App for LlamaApp {
                         let mut state = STATE.write();
                         ComboBox::from_label(
                             RichText::new("Model:")
-                                .font(state.title_font.clone())
+                                .font(self.title_font.clone())
                                 .color(Color32::from_rgb(0x54, 0x10, 0x21))
                                 .strong(),
                         )
@@ -108,7 +145,7 @@ impl App for LlamaApp {
                 let mut sig_reset = false;
                 let mut sig_quit = false;
 
-                ui.columns(6, |uis| {
+                ui.columns(8, |uis| {
                     uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         sig_send |= ui.label(RichText::new("Ctrl+Enter").strong()).clicked();
                     });
@@ -126,6 +163,36 @@ impl App for LlamaApp {
                     });
                     uis[5].with_layout(Layout::left_to_right(Align::Center), |ui| {
                         sig_quit |= ui.label("quit").clicked();
+                    });
+                    uis[6].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if ImageButton::new(
+                            Image::new(self.vertical.clone())
+                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
+                        )
+                        .ui(ui)
+                        .clicked()
+                        {
+                            self.box_layout = BoxLayout::Vertically;
+                            if let Some(storage) = frame.storage_mut() {
+                                storage.set_string("layout", "V".to_string());
+                                storage.flush();
+                            }
+                        }
+                    });
+                    uis[7].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        if ImageButton::new(
+                            Image::new(self.horizontal.clone())
+                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
+                        )
+                        .ui(ui)
+                        .clicked()
+                        {
+                            self.box_layout = BoxLayout::Horizontally;
+                            if let Some(storage) = frame.storage_mut() {
+                                storage.set_string("layout", "H".to_string());
+                                storage.flush();
+                            }
+                        }
                     });
                 });
 
@@ -146,20 +213,51 @@ impl App for LlamaApp {
 
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
-            let text_size = Vec2::new(size.x, size.y / 3.0);
-            ScrollArea::vertical()
-                .max_height(text_size.y)
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
-                        .request_focus();
-                });
 
-            CommonMarkViewer::new("output").show_scrollable(
-                ui,
-                &mut MD_CACHE.write(),
-                &STATE.read().output,
-            );
+            match self.box_layout {
+                BoxLayout::Horizontally => {
+                    // Dispose text viewers horizontally
+                    let text_size = Vec2::new(size.x * 3.0 / 7.0, size.y);
+                    ui.horizontal_top(|ui| {
+                        ScrollArea::vertical()
+                            .max_width(text_size.x)
+                            .max_height(text_size.y)
+                            .auto_shrink([false; 2])
+                            .show(ui, |ui| {
+                                ui.add_sized(
+                                    text_size,
+                                    TextEdit::multiline(&mut STATE.write().input),
+                                )
+                                .request_focus();
+                            });
+
+                        CommonMarkViewer::new("output").show_scrollable(
+                            ui,
+                            &mut MD_CACHE.write(),
+                            &STATE.read().output,
+                        );
+                    });
+                }
+                BoxLayout::Vertically => {
+                    // Dispose text viewers vertically (default)
+                    let text_size = Vec2::new(size.x, size.y / 3.0);
+                    ScrollArea::vertical()
+                        .max_width(text_size.x)
+                        .max_height(text_size.y)
+                        .auto_shrink([false; 2])
+                        .show(ui, |ui| {
+                            ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
+                                .request_focus();
+                        });
+
+                    CommonMarkViewer::new("output").show_scrollable(
+                        ui,
+                        &mut MD_CACHE.write(),
+                        &STATE.read().output,
+                    );
+                }
+                BoxLayout::NotSet => (),
+            }
 
             if STATE.read().retreiving {
                 Spinner::new().paint_at(
@@ -179,3 +277,11 @@ static RUNTIME: Runtime = Runtime::new().unwrap();
 
 #[dynamic]
 static mut MD_CACHE: CommonMarkCache = CommonMarkCache::default();
+
+#[dynamic]
+static VERSION: String = {
+    let cargo = include_str!("../Cargo.toml").parse::<Table>().unwrap();
+    let package = cargo["package"].as_table().unwrap();
+    let version = package["version"].as_str().unwrap();
+    return version.to_string();
+};
