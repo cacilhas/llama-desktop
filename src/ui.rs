@@ -10,9 +10,14 @@ use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 use egui_extras::install_image_loaders;
 use tokio::runtime::Runtime;
 use tokio::sync::oneshot;
+use toml::Table;
 
 #[derive(Debug)]
-pub struct LlamaApp;
+pub struct LlamaApp {
+    pub logo: ImageSource<'static>,
+    pub title_font: FontId,
+    pub small_font: FontId,
+}
 
 /// LlamaApp is just a proxy for a module
 impl LlamaApp {
@@ -37,7 +42,11 @@ impl LlamaApp {
             }
         };
 
-        Self
+        Self {
+            logo: include_image!("assets/logo.png"),
+            title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
+            small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
+        }
     }
 }
 
@@ -61,14 +70,19 @@ impl App for LlamaApp {
                 ui.columns(2, |uis| {
                     uis[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.add(
-                            Image::new(STATE.read().logo.clone())
+                            Image::new(self.logo.clone())
                                 .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
                         );
 
                         ui.label(
                             RichText::new("Llama Desktop")
-                                .font(STATE.read().title_font.clone())
+                                .font(self.title_font.clone())
                                 .strong(),
+                        );
+
+                        ui.label(
+                            RichText::new(&format!("v{}", VERSION.to_string()))
+                                .font(self.small_font.clone()),
                         );
                     });
 
@@ -76,7 +90,7 @@ impl App for LlamaApp {
                         let mut state = STATE.write();
                         ComboBox::from_label(
                             RichText::new("Model:")
-                                .font(state.title_font.clone())
+                                .font(self.title_font.clone())
                                 .color(Color32::from_rgb(0x54, 0x10, 0x21))
                                 .strong(),
                         )
@@ -179,3 +193,11 @@ static RUNTIME: Runtime = Runtime::new().unwrap();
 
 #[dynamic]
 static mut MD_CACHE: CommonMarkCache = CommonMarkCache::default();
+
+#[dynamic]
+static VERSION: String = {
+    let cargo = include_str!("../Cargo.toml").parse::<Table>().unwrap();
+    let package = cargo["package"].as_table().unwrap();
+    let version = package["version"].as_str().unwrap();
+    return version.to_string();
+};
