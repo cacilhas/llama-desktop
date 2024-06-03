@@ -15,8 +15,11 @@ use toml::Table;
 #[derive(Debug)]
 pub struct LlamaApp {
     pub logo: ImageSource<'static>,
+    pub horizontal: ImageSource<'static>,
+    pub vertical: ImageSource<'static>,
     pub title_font: FontId,
     pub small_font: FontId,
+    pub horizontally: bool,
 }
 
 /// LlamaApp is just a proxy for a module
@@ -44,8 +47,11 @@ impl LlamaApp {
 
         Self {
             logo: include_image!("assets/logo.png"),
+            horizontal: include_image!("assets/horizontal.png"),
+            vertical: include_image!("assets/vertical.png"),
             title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
             small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
+            horizontally: false,
         }
     }
 }
@@ -122,7 +128,7 @@ impl App for LlamaApp {
                 let mut sig_reset = false;
                 let mut sig_quit = false;
 
-                ui.columns(6, |uis| {
+                ui.columns(8, |uis| {
                     uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         sig_send |= ui.label(RichText::new("Ctrl+Enter").strong()).clicked();
                     });
@@ -140,6 +146,30 @@ impl App for LlamaApp {
                     });
                     uis[5].with_layout(Layout::left_to_right(Align::Center), |ui| {
                         sig_quit |= ui.label("quit").clicked();
+                    });
+                    uis[6].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if ImageButton::new(
+                            Image::new(self.vertical.clone())
+                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
+                        )
+                        .ui(ui)
+                        .clicked()
+                        {
+                            self.horizontally = false;
+                            println!("{}", self.horizontally);
+                        }
+                    });
+                    uis[7].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        if ImageButton::new(
+                            Image::new(self.horizontal.clone())
+                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
+                        )
+                        .ui(ui)
+                        .clicked()
+                        {
+                            self.horizontally = true;
+                            println!("{}", self.horizontally);
+                        }
                     });
                 });
 
@@ -160,20 +190,44 @@ impl App for LlamaApp {
 
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
-            let text_size = Vec2::new(size.x, size.y / 3.0);
-            ScrollArea::vertical()
-                .max_height(text_size.y)
-                .auto_shrink([false; 2])
-                .show(ui, |ui| {
-                    ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
-                        .request_focus();
-                });
 
-            CommonMarkViewer::new("output").show_scrollable(
-                ui,
-                &mut MD_CACHE.write(),
-                &STATE.read().output,
-            );
+            if self.horizontally {
+                // Dispose text viewers horizontally
+                let text_size = Vec2::new(size.x * 3.0 / 7.0, size.y);
+                ui.horizontal_top(|ui| {
+                    ScrollArea::vertical()
+                        .max_width(text_size.x)
+                        .max_height(text_size.y)
+                        .auto_shrink([false; 2])
+                        .show(ui, |ui| {
+                            ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
+                                .request_focus();
+                        });
+
+                    CommonMarkViewer::new("output").show_scrollable(
+                        ui,
+                        &mut MD_CACHE.write(),
+                        &STATE.read().output,
+                    );
+                });
+            } else {
+                // Dispose text viewers vertically (default)
+                let text_size = Vec2::new(size.x, size.y / 3.0);
+                ScrollArea::vertical()
+                    .max_width(text_size.x)
+                    .max_height(text_size.y)
+                    .auto_shrink([false; 2])
+                    .show(ui, |ui| {
+                        ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
+                            .request_focus();
+                    });
+
+                CommonMarkViewer::new("output").show_scrollable(
+                    ui,
+                    &mut MD_CACHE.write(),
+                    &STATE.read().output,
+                );
+            }
 
             if STATE.read().retreiving {
                 Spinner::new().paint_at(
