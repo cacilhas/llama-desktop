@@ -213,6 +213,7 @@ impl App for LlamaApp {
 
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
+            let mut body: Option<Rect> = None;
 
             match self.box_layout {
                 BoxLayout::Horizontally => {
@@ -233,6 +234,7 @@ impl App for LlamaApp {
                                 }
                             });
 
+                        body = Some(ui.available_rect_before_wrap());
                         CommonMarkViewer::new("output").show_scrollable(
                             ui,
                             &mut MD_CACHE.write(),
@@ -257,6 +259,7 @@ impl App for LlamaApp {
                             }
                         });
 
+                    body = Some(ui.available_rect_before_wrap());
                     CommonMarkViewer::new("output").show_scrollable(
                         ui,
                         &mut MD_CACHE.write(),
@@ -267,13 +270,24 @@ impl App for LlamaApp {
             }
 
             if STATE.read().retreiving {
-                Spinner::new().paint_at(
-                    ui,
-                    Rect::from_min_max(
-                        Pos2::new(size.x / 2.0 - 16.0, size.y / 2.0 - 16.0),
-                        Pos2::new(size.x / 2.0 + 16.0, size.y / 2.0 + 16.0),
+                let radius: f32 = 16.0;
+                let (min, max) = match body {
+                    Some(rect) => {
+                        let half_width = rect.width() / 2.0;
+                        let half_height = rect.height() / 2.0;
+                        let x = rect.min.x;
+                        let y = rect.min.y;
+                        (
+                            Pos2::new(half_width - radius + x, half_height - radius + y),
+                            Pos2::new(half_width + radius + x, half_height + radius + y),
+                        )
+                    }
+                    None => (
+                        Pos2::new(size.x / 2.0 - radius, size.y / 2.0 - radius),
+                        Pos2::new(size.x / 2.0 + radius, size.y / 2.0 + radius),
                     ),
-                );
+                };
+                Spinner::new().paint_at(ui, Rect::from_min_max(min, max));
             }
 
             if STATE.read().reload {
