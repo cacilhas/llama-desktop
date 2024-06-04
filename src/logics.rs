@@ -4,6 +4,7 @@ use crate::helpers::{format_input_to_output, HR};
 use crate::ollama;
 use crate::protocol::{Request, Response};
 use reqwest::header;
+use tokio::time;
 
 #[derive(Debug)]
 pub struct State {
@@ -61,36 +62,64 @@ pub async fn send() {
     };
     let payload = serde_json::to_string(&payload).unwrap();
     let uri = ollama::path("/api/generate");
-    let mut response = client.post(uri).body(payload).send().await.unwrap();
-    if !response.status().is_success() {
-        let err = response.text().await.unwrap_or_else(|e| e.to_string());
-        let res = format!("\n\n## ERROR\n{}{}", err, HR);
-        STATE.write().output.push_str(&res);
-        STATE.write().retrieving = false;
-        return;
-    }
+    let timeout = time::Duration::from_secs(20);
 
-    'read: while let Some(current) = response.chunk().await.unwrap() {
-        let chunk: Response =
-            serde_json::from_str(std::str::from_utf8(current.borrow()).unwrap()).unwrap();
-        {
-            let mut state = STATE.write();
-            state.output.push_str(&chunk.response);
-            if let Some(context) = chunk.context {
-                state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
+    match time::timeout(timeout, client.post(uri).body(payload).send()).await {
+        Ok(Ok(mut response)) => {
+            if !response.status().is_success() {
+                fail(response.text().await.unwrap_or_else(|e| e.to_string()));
+                return;
             }
-            if chunk.done {
-                break 'read;
+
+            'read: while let Ok(current) = time::timeout(timeout, response.chunk()).await {
+                match current {
+                    Ok(Some(current)) => {
+                        let chunk: Response =
+                            serde_json::from_str(std::str::from_utf8(current.borrow()).unwrap())
+                                .unwrap();
+                        let mut state = STATE.write();
+                        state.output.push_str(&chunk.response);
+                        if let Some(context) = chunk.context {
+                            state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
+                        }
+                        if chunk.done {
+                            break 'read;
+                        }
+                    }
+
+                    Ok(None) => {
+                        fail("Ollama Server failed to respond");
+                        return;
+                    }
+
+                    _ => {
+                        fail("Timeout waiting for Ollama Server");
+                        return;
+                    }
+                }
             }
+        }
+
+        _ => {
+            fail("Timeout waiting for Ollama Server");
+            return;
         }
     }
 
-    {
-        let mut state = STATE.write();
-        state.output.push_str(HR);
-        state.retrieving = false;
-        state.reload = true;
-    }
+    finish();
+}
+
+fn fail(message: impl Into<String>) {
+    let res = format!("\n\n## ERROR\n{}\n", message.into());
+    STATE.write().output.push_str(&res);
+    finish();
+}
+
+fn finish() {
+    let mut state = STATE.write();
+    state.output.push_str(HR);
+    state.retrieving = false;
+    state.reload = true;
 }
 
 #[dynamic]
