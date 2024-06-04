@@ -11,7 +11,7 @@ pub struct State {
     pub selected_model: usize,
     pub input: String,
     pub output: String,
-    pub retreiving: bool,
+    pub retrieving: bool,
     pub reload: bool,
     pub context: Vec<i32>,
 }
@@ -20,7 +20,7 @@ impl State {
     pub fn reset(&mut self) {
         self.input = "Why the sky is blue?".to_owned();
         self.output = String::new();
-        self.retreiving = false;
+        self.retrieving = false;
         self.reload = true;
         self.context = Vec::new();
     }
@@ -66,7 +66,7 @@ pub async fn send() {
         let err = response.text().await.unwrap_or_else(|e| e.to_string());
         let res = format!("\n\n## ERROR\n{}{}", err, HR);
         STATE.write().output.push_str(&res);
-        STATE.write().retreiving = false;
+        STATE.write().retrieving = false;
         return;
     }
 
@@ -88,7 +88,7 @@ pub async fn send() {
     {
         let mut state = STATE.write();
         state.output.push_str(HR);
-        state.retreiving = false;
+        state.retrieving = false;
         state.reload = true;
     }
 }
@@ -99,7 +99,7 @@ pub static mut STATE: State = State {
     selected_model: usize::max_value(),
     input: "Why the sky is blue?".to_owned(),
     output: String::new(),
-    retreiving: false,
+    retrieving: false,
     reload: true,
     context: Vec::new(),
 };

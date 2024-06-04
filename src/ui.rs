@@ -196,9 +196,9 @@ impl App for LlamaApp {
                     });
                 });
 
-                if !STATE.read().retreiving {
+                if !STATE.read().retrieving {
                     if sig_send || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter)) {
-                        STATE.write().retreiving = true;
+                        STATE.write().retrieving = true;
                         RUNTIME.spawn(send());
                     }
                     if sig_reset || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::R)) {
@@ -269,7 +269,7 @@ impl App for LlamaApp {
                 BoxLayout::NotSet => (),
             }
 
-            if STATE.read().retreiving {
+            if STATE.read().retrieving {
                 let radius: f32 = 16.0;
                 let (min, max) = match body {
                     Some(rect) => {
