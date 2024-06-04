@@ -1,4 +1,5 @@
 use std::borrow::Borrow;
+use std::error::Error;
 
 use crate::helpers::{format_input_to_output, HR};
 use crate::ollama;
@@ -92,16 +93,21 @@ pub async fn send() {
                         return;
                     }
 
-                    _ => {
-                        fail("Timeout waiting for Ollama Server");
+                    Err(err) => {
+                        timeout_with_error(err);
                         return;
                     }
                 }
             }
         }
 
-        _ => {
-            fail("Timeout waiting for Ollama Server");
+        Ok(Err(err)) => {
+            timeout_with_error(err);
+            return;
+        }
+
+        Err(err) => {
+            timeout_with_error(err);
             return;
         }
     }
@@ -109,9 +115,17 @@ pub async fn send() {
     finish();
 }
 
-fn fail(message: impl Into<String>) {
-    let res = format!("\n\n## ERROR\n{}\n", message.into());
+fn timeout_with_error(err: impl Error) {
+    let mut res = String::new();
+    res.push_str("Timeout waiting for Ollama Server:\n\n");
+    res.push_str(&err.to_string());
+    fail(res);
+}
+
+fn fail(message: impl Into<String> + Clone) {
+    let res = format!("\n\n## ERROR\n{}\n", message.clone().into());
     STATE.write().output.push_str(&res);
+    eprintln!("{}", message.into());
     finish();
 }
 
