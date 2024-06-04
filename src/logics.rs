@@ -63,6 +63,7 @@ pub async fn send() {
     };
     let payload = serde_json::to_string(&payload).unwrap();
     let uri = ollama::path("/api/generate");
+    // TODO: make timeout configurable
     let timeout = time::Duration::from_secs(20);
 
     match time::timeout(timeout, client.post(uri).body(payload).send()).await {
