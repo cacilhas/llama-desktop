@@ -144,19 +144,40 @@ impl App for LlamaApp {
                 let mut sig_send = false;
                 let mut sig_reset = false;
                 let mut sig_quit = false;
+                let retrieving = STATE.read().retrieving;
 
                 ui.columns(8, |uis| {
                     uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        sig_send |= ui.label(RichText::new("Ctrl+Enter").strong()).clicked();
+                        let text = if retrieving {
+                            RichText::new("Ctrl+Enter").weak()
+                        } else {
+                            RichText::new("Ctrl+Enter").strong()
+                        };
+                        sig_send |= ui.label(text).clicked();
                     });
                     uis[1].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        sig_send |= ui.label("send").clicked();
+                        let text = if retrieving {
+                            RichText::new("send").weak()
+                        } else {
+                            RichText::new("send")
+                        };
+                        sig_send |= ui.label(text).clicked();
                     });
                     uis[2].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        sig_reset |= ui.label(RichText::new("Ctrl+R").strong()).clicked();
+                        let text = if retrieving {
+                            RichText::new("Ctrl+R").weak()
+                        } else {
+                            RichText::new("Ctrl+R").strong()
+                        };
+                        sig_reset |= ui.label(text).clicked();
                     });
                     uis[3].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        sig_reset |= ui.label("reset").clicked();
+                        let text = if retrieving {
+                            RichText::new("reset").weak()
+                        } else {
+                            RichText::new("reset")
+                        };
+                        sig_send |= ui.label(text).clicked();
                     });
                     uis[4].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         sig_quit |= ui.label(RichText::new("Ctrl+Q").strong()).clicked();
@@ -196,9 +217,9 @@ impl App for LlamaApp {
                     });
                 });
 
-                if !STATE.read().retreiving {
+                if !retrieving {
                     if sig_send || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter)) {
-                        STATE.write().retreiving = true;
+                        STATE.write().retrieving = true;
                         RUNTIME.spawn(send());
                     }
                     if sig_reset || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::R)) {
@@ -213,6 +234,7 @@ impl App for LlamaApp {
 
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
+            let mut body: Option<Rect> = None;
 
             match self.box_layout {
                 BoxLayout::Horizontally => {
@@ -224,13 +246,16 @@ impl App for LlamaApp {
                             .max_height(text_size.y)
                             .auto_shrink([false; 2])
                             .show(ui, |ui| {
-                                ui.add_sized(
+                                let input = ui.add_sized(
                                     text_size,
                                     TextEdit::multiline(&mut STATE.write().input),
-                                )
-                                .request_focus();
+                                );
+                                if STATE.read().reload {
+                                    input.request_focus();
+                                }
                             });
 
+                        body = Some(ui.available_rect_before_wrap());
                         CommonMarkViewer::new("output").show_scrollable(
                             ui,
                             &mut MD_CACHE.write(),
@@ -246,10 +271,16 @@ impl App for LlamaApp {
                         .max_height(text_size.y)
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
-                            ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
-                                .request_focus();
+                            let input = ui.add_sized(
+                                text_size,
+                                TextEdit::multiline(&mut STATE.write().input),
+                            );
+                            if STATE.read().reload {
+                                input.request_focus();
+                            }
                         });
 
+                    body = Some(ui.available_rect_before_wrap());
                     CommonMarkViewer::new("output").show_scrollable(
                         ui,
                         &mut MD_CACHE.write(),
@@ -259,14 +290,29 @@ impl App for LlamaApp {
                 BoxLayout::NotSet => (),
             }
 
-            if STATE.read().retreiving {
-                Spinner::new().paint_at(
-                    ui,
-                    Rect::from_min_max(
-                        Pos2::new(size.x / 2.0 - 16.0, size.y / 2.0 - 16.0),
-                        Pos2::new(size.x / 2.0 + 16.0, size.y / 2.0 + 16.0),
+            if STATE.read().retrieving {
+                let radius: f32 = 16.0;
+                let (min, max) = match body {
+                    Some(rect) => {
+                        let half_width = rect.width() / 2.0;
+                        let half_height = rect.height() / 2.0;
+                        let x = rect.min.x;
+                        let y = rect.min.y;
+                        (
+                            Pos2::new(half_width - radius + x, half_height - radius + y),
+                            Pos2::new(half_width + radius + x, half_height + radius + y),
+                        )
+                    }
+                    None => (
+                        Pos2::new(size.x / 2.0 - radius, size.y / 2.0 - radius),
+                        Pos2::new(size.x / 2.0 + radius, size.y / 2.0 + radius),
                     ),
-                );
+                };
+                Spinner::new().paint_at(ui, Rect::from_min_max(min, max));
+            }
+
+            if STATE.read().reload {
+                STATE.write().reload = false;
             }
         });
     }

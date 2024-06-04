@@ -1,9 +1,11 @@
 use std::borrow::Borrow;
+use std::error::Error;
 
 use crate::helpers::{format_input_to_output, HR};
 use crate::ollama;
 use crate::protocol::{Request, Response};
 use reqwest::header;
+use tokio::time;
 
 #[derive(Debug)]
 pub struct State {
@@ -11,7 +13,8 @@ pub struct State {
     pub selected_model: usize,
     pub input: String,
     pub output: String,
-    pub retreiving: bool,
+    pub retrieving: bool,
+    pub reload: bool,
     pub context: Vec<i32>,
 }
 
@@ -19,7 +22,8 @@ impl State {
     pub fn reset(&mut self) {
         self.input = "Why the sky is blue?".to_owned();
         self.output = String::new();
-        self.retreiving = false;
+        self.retrieving = false;
+        self.reload = true;
         self.context = Vec::new();
     }
 }
@@ -59,31 +63,78 @@ pub async fn send() {
     };
     let payload = serde_json::to_string(&payload).unwrap();
     let uri = ollama::path("/api/generate");
-    let mut response = client.post(uri).body(payload).send().await.unwrap();
-    if !response.status().is_success() {
-        let err = response.text().await.unwrap_or_else(|e| e.to_string());
-        let res = format!("\n\n## ERROR\n{}{}", err, HR);
-        STATE.write().output.push_str(&res);
-        STATE.write().retreiving = false;
-        return;
-    }
+    // TODO: make timeout configurable
+    let timeout = time::Duration::from_secs(20);
 
-    'read: while let Some(current) = response.chunk().await.unwrap() {
-        let chunk: Response =
-            serde_json::from_str(std::str::from_utf8(current.borrow()).unwrap()).unwrap();
-        {
-            let mut state = STATE.write();
-            state.output.push_str(&chunk.response);
-            if let Some(context) = chunk.context {
-                state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
+    match time::timeout(timeout, client.post(uri).body(payload).send()).await {
+        Ok(Ok(mut response)) => {
+            if !response.status().is_success() {
+                fail(response.text().await.unwrap_or_else(|e| e.to_string()));
+                return;
             }
-            if chunk.done {
-                break 'read;
+
+            'read: while let Ok(current) = time::timeout(timeout, response.chunk()).await {
+                match current {
+                    Ok(Some(current)) => {
+                        let chunk: Response =
+                            serde_json::from_str(std::str::from_utf8(current.borrow()).unwrap())
+                                .unwrap();
+                        let mut state = STATE.write();
+                        state.output.push_str(&chunk.response);
+                        if let Some(context) = chunk.context {
+                            state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
+                        }
+                        if chunk.done {
+                            break 'read;
+                        }
+                    }
+
+                    Ok(None) => {
+                        fail("Ollama Server failed to respond");
+                        return;
+                    }
+
+                    Err(err) => {
+                        timeout_with_error(err);
+                        return;
+                    }
+                }
             }
         }
+
+        Ok(Err(err)) => {
+            timeout_with_error(err);
+            return;
+        }
+
+        Err(err) => {
+            timeout_with_error(err);
+            return;
+        }
     }
-    STATE.write().output.push_str(HR);
-    STATE.write().retreiving = false;
+
+    finish();
+}
+
+fn timeout_with_error(err: impl Error) {
+    let mut res = String::new();
+    res.push_str("Timeout waiting for Ollama Server:\n\n");
+    res.push_str(&err.to_string());
+    fail(res);
+}
+
+fn fail(message: impl Into<String> + Clone) {
+    let res = format!("\n\n## ERROR\n{}\n", message.clone().into());
+    STATE.write().output.push_str(&res);
+    eprintln!("{}", message.into());
+    finish();
+}
+
+fn finish() {
+    let mut state = STATE.write();
+    state.output.push_str(HR);
+    state.retrieving = false;
+    state.reload = true;
 }
 
 #[dynamic]
@@ -92,6 +143,7 @@ pub static mut STATE: State = State {
     selected_model: usize::max_value(),
     input: "Why the sky is blue?".to_owned(),
     output: String::new(),
-    retreiving: false,
+    retrieving: false,
+    reload: true,
     context: Vec::new(),
 };
