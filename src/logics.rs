@@ -15,6 +15,7 @@ pub struct State {
     pub output: String,
     pub retrieving: bool,
     pub reload: bool,
+    pub timeout_idx: usize,
     pub context: Vec<i32>,
 }
 
@@ -64,7 +65,7 @@ pub async fn send() {
     let payload = serde_json::to_string(&payload).unwrap();
     let uri = ollama::path("/api/generate");
     // TODO: make timeout configurable
-    let timeout = time::Duration::from_secs(20);
+    let timeout = time::Duration::from_secs(TIMEOUTS[STATE.read().timeout_idx] as u64);
 
     match time::timeout(timeout, client.post(uri).body(payload).send()).await {
         Ok(Ok(mut response)) => {
@@ -145,5 +146,8 @@ pub static mut STATE: State = State {
     output: String::new(),
     retrieving: false,
     reload: true,
+    timeout_idx: usize::max_value(),
     context: Vec::new(),
 };
+
+pub static TIMEOUTS: [usize; 7] = [10, 20, 30, 60, 120, 180, 300];

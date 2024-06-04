@@ -62,6 +62,54 @@ impl LlamaApp {
             box_layout: BoxLayout::default(),
         }
     }
+
+    fn setup(&mut self, frame: &mut Frame) {
+        if let Some(storage) = frame.storage() {
+            self.setup_model(storage);
+            self.setup_timeout(storage);
+            self.setup_layout(storage);
+        } else {
+            let mut state = STATE.write();
+            state.selected_model = 0;
+            state.timeout_idx = 1;
+            self.box_layout = BoxLayout::Vertically;
+        }
+    }
+
+    fn setup_model(&mut self, storage: &dyn Storage) {
+        if STATE.read().selected_model > STATE.read().models.len() {
+            let selected_model = storage
+                .get_string("selected-model")
+                .unwrap_or("0".to_string());
+            STATE.write().selected_model = selected_model.parse().unwrap_or(0);
+        }
+    }
+
+    fn setup_timeout(&mut self, storage: &dyn Storage) {
+        if STATE.read().timeout_idx > TIMEOUTS.len() {
+            let timeout: usize = storage
+                .get_string("timeout")
+                .unwrap_or("20".to_string())
+                .parse()
+                .unwrap_or(20);
+            for (idx, tm) in TIMEOUTS.iter().enumerate() {
+                if *tm == timeout {
+                    STATE.write().timeout_idx = idx;
+                    break;
+                }
+            }
+        }
+    }
+
+    fn setup_layout(&mut self, storage: &dyn Storage) {
+        if self.box_layout == BoxLayout::NotSet {
+            if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
+                self.box_layout = BoxLayout::Horizontally;
+            } else {
+                self.box_layout = BoxLayout::Vertically;
+            }
+        }
+    }
 }
 
 impl App for LlamaApp {
@@ -69,23 +117,7 @@ impl App for LlamaApp {
         ctx.set_visuals(Visuals::dark());
 
         set_font_size(ctx, 20.0);
-        if STATE.read().selected_model > STATE.read().models.len() {
-            if let Some(storage) = frame.storage() {
-                let selected_model = storage
-                    .get_string("selected-model")
-                    .unwrap_or("0".to_string());
-                STATE.write().selected_model = selected_model.parse().unwrap_or(0);
-            }
-        }
-        if self.box_layout == BoxLayout::NotSet {
-            if let Some(storage) = frame.storage() {
-                if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
-                    self.box_layout = BoxLayout::Horizontally;
-                } else {
-                    self.box_layout = BoxLayout::Vertically;
-                }
-            }
-        }
+        self.setup(frame);
 
         TopBottomPanel::top("header")
             .exact_height(48.0)
@@ -97,16 +129,18 @@ impl App for LlamaApp {
                                 .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
                         );
 
-                        ui.label(
-                            RichText::new("Llama Desktop")
-                                .font(self.title_font.clone())
-                                .strong(),
-                        );
+                        ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                            ui.label(
+                                RichText::new("Llama Desktop")
+                                    .font(self.title_font.clone())
+                                    .strong(),
+                            );
 
-                        ui.label(
-                            RichText::new(&format!("v{}", VERSION.to_string()))
-                                .font(self.small_font.clone()),
-                        );
+                            ui.label(
+                                RichText::new(&format!("v{}", VERSION.to_string()))
+                                    .font(self.small_font.clone()),
+                            );
+                        });
                     });
 
                     uis[1].with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -139,14 +173,14 @@ impl App for LlamaApp {
             });
 
         TopBottomPanel::bottom("footer")
-            .exact_height(28.0)
+            .exact_height(32.0)
             .show(ctx, |ui| {
                 let mut sig_send = false;
                 let mut sig_reset = false;
                 let mut sig_quit = false;
                 let retrieving = STATE.read().retrieving;
 
-                ui.columns(8, |uis| {
+                ui.columns(9, |uis| {
                     uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let text = if retrieving {
                             RichText::new("Ctrl+Enter").weak()
@@ -214,6 +248,27 @@ impl App for LlamaApp {
                                 storage.flush();
                             }
                         }
+                    });
+                    uis[8].with_layout(Layout::right_to_left(Align::Min), |ui| {
+                        let mut state = STATE.write();
+                        ComboBox::from_label(RichText::new("Timeout:").strong())
+                            .selected_text(format!("{}", TIMEOUTS[state.timeout_idx]))
+                            .show_ui(ui, |ui| {
+                                let mut idx = state.timeout_idx;
+                                for (i, tm) in TIMEOUTS.iter().enumerate() {
+                                    let value = ui.selectable_value(&mut idx, i, format!("{}", tm));
+                                    if value.clicked() {
+                                        idx = i;
+                                    }
+                                }
+                                if idx != state.timeout_idx {
+                                    state.timeout_idx = idx;
+                                    if let Some(storage) = frame.storage_mut() {
+                                        storage.set_string("timeout", format!("{}", TIMEOUTS[idx]));
+                                        storage.flush();
+                                    }
+                                }
+                            });
                     });
                 });
 
