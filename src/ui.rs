@@ -144,19 +144,40 @@ impl App for LlamaApp {
                 let mut sig_send = false;
                 let mut sig_reset = false;
                 let mut sig_quit = false;
+                let retrieving = STATE.read().retrieving;
 
                 ui.columns(8, |uis| {
                     uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        sig_send |= ui.label(RichText::new("Ctrl+Enter").strong()).clicked();
+                        let text = if retrieving {
+                            RichText::new("Ctrl+Enter").weak()
+                        } else {
+                            RichText::new("Ctrl+Enter").strong()
+                        };
+                        sig_send |= ui.label(text).clicked();
                     });
                     uis[1].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        sig_send |= ui.label("send").clicked();
+                        let text = if retrieving {
+                            RichText::new("send").weak()
+                        } else {
+                            RichText::new("send")
+                        };
+                        sig_send |= ui.label(text).clicked();
                     });
                     uis[2].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        sig_reset |= ui.label(RichText::new("Ctrl+R").strong()).clicked();
+                        let text = if retrieving {
+                            RichText::new("Ctrl+R").weak()
+                        } else {
+                            RichText::new("Ctrl+R").strong()
+                        };
+                        sig_reset |= ui.label(text).clicked();
                     });
                     uis[3].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        sig_reset |= ui.label("reset").clicked();
+                        let text = if retrieving {
+                            RichText::new("reset").weak()
+                        } else {
+                            RichText::new("reset")
+                        };
+                        sig_send |= ui.label(text).clicked();
                     });
                     uis[4].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         sig_quit |= ui.label(RichText::new("Ctrl+Q").strong()).clicked();
@@ -196,7 +217,7 @@ impl App for LlamaApp {
                     });
                 });
 
-                if !STATE.read().retrieving {
+                if !retrieving {
                     if sig_send || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter)) {
                         STATE.write().retrieving = true;
                         RUNTIME.spawn(send());
