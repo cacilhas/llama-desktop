@@ -12,6 +12,7 @@ pub struct State {
     pub input: String,
     pub output: String,
     pub retreiving: bool,
+    pub reload: bool,
     pub context: Vec<i32>,
 }
 
@@ -20,6 +21,7 @@ impl State {
         self.input = "Why the sky is blue?".to_owned();
         self.output = String::new();
         self.retreiving = false;
+        self.reload = true;
         self.context = Vec::new();
     }
 }
@@ -82,8 +84,13 @@ pub async fn send() {
             }
         }
     }
-    STATE.write().output.push_str(HR);
-    STATE.write().retreiving = false;
+
+    {
+        let mut state = STATE.write();
+        state.output.push_str(HR);
+        state.retreiving = false;
+        state.reload = true;
+    }
 }
 
 #[dynamic]
@@ -93,5 +100,6 @@ pub static mut STATE: State = State {
     input: "Why the sky is blue?".to_owned(),
     output: String::new(),
     retreiving: false,
+    reload: true,
     context: Vec::new(),
 };

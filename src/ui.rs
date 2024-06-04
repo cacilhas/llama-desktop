@@ -224,11 +224,13 @@ impl App for LlamaApp {
                             .max_height(text_size.y)
                             .auto_shrink([false; 2])
                             .show(ui, |ui| {
-                                ui.add_sized(
+                                let input = ui.add_sized(
                                     text_size,
                                     TextEdit::multiline(&mut STATE.write().input),
-                                )
-                                .request_focus();
+                                );
+                                if STATE.read().reload {
+                                    input.request_focus();
+                                }
                             });
 
                         CommonMarkViewer::new("output").show_scrollable(
@@ -246,8 +248,13 @@ impl App for LlamaApp {
                         .max_height(text_size.y)
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
-                            ui.add_sized(text_size, TextEdit::multiline(&mut STATE.write().input))
-                                .request_focus();
+                            let input = ui.add_sized(
+                                text_size,
+                                TextEdit::multiline(&mut STATE.write().input),
+                            );
+                            if STATE.read().reload {
+                                input.request_focus();
+                            }
                         });
 
                     CommonMarkViewer::new("output").show_scrollable(
@@ -267,6 +274,10 @@ impl App for LlamaApp {
                         Pos2::new(size.x / 2.0 + 16.0, size.y / 2.0 + 16.0),
                     ),
                 );
+            }
+
+            if STATE.read().reload {
+                STATE.write().reload = false;
             }
         });
     }
