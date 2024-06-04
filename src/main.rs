@@ -1,6 +1,9 @@
 #[macro_use]
 extern crate static_init;
 
+#[macro_use]
+mod debug;
+
 mod fonts;
 mod helpers;
 mod logics;

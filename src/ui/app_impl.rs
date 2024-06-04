@@ -1,91 +1,20 @@
-use std::{process, thread, time::Duration};
+use std::process;
 
+use super::BoxLayout;
+use super::RUNTIME;
 use crate::fonts::set_font_size;
 use crate::logics::*;
-use crate::ollama;
 use eframe::Frame;
 use eframe::*;
 use egui::*;
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
-use egui_extras::install_image_loaders;
-use tokio::runtime::Runtime;
-use tokio::sync::oneshot;
-use toml::Table;
 
-#[derive(Debug)]
-pub struct LlamaApp {
-    logo: ImageSource<'static>,
-    horizontal: ImageSource<'static>,
-    vertical: ImageSource<'static>,
-    title_font: FontId,
-    small_font: FontId,
-    box_layout: BoxLayout,
-}
-
-#[derive(Debug, Default, Eq, PartialEq)]
-enum BoxLayout {
-    Horizontally,
-    Vertically,
-    #[default]
-    NotSet,
-}
-
-/// LlamaApp is just a proxy for a module
-impl LlamaApp {
-    pub fn new(cc: &CreationContext<'_>, fonts: FontDefinitions) -> Self {
-        install_image_loaders(&cc.egui_ctx);
-        cc.egui_ctx.set_fonts(fonts);
-
-        let (inp, mut out) = oneshot::channel::<Vec<String>>();
-        RUNTIME.spawn(async move {
-            inp.send(ollama::get_models().await).unwrap();
-        });
-        STATE.write().models = loop {
-            match out.try_recv() {
-                Ok(cache) => break cache,
-                Err(oneshot::error::TryRecvError::Empty) => {
-                    thread::sleep(Duration::from_millis(100));
-                }
-                Err(err) => {
-                    eprintln!("failed to retrieve models: {}", err);
-                    panic!("failed retrieving models");
-                }
-            }
-        };
-
-        Self {
-            logo: include_image!("assets/logo.png"),
-            horizontal: include_image!("assets/horizontal.png"),
-            vertical: include_image!("assets/vertical.png"),
-            title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
-            small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
-            box_layout: BoxLayout::default(),
-        }
-    }
-}
-
-impl App for LlamaApp {
+impl App for super::LlamaApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         ctx.set_visuals(Visuals::dark());
 
         set_font_size(ctx, 20.0);
-        if STATE.read().selected_model > STATE.read().models.len() {
-            if let Some(storage) = frame.storage() {
-                let selected_model = storage
-                    .get_string("selected-model")
-                    .unwrap_or("0".to_string());
-                STATE.write().selected_model = selected_model.parse().unwrap_or(0);
-            }
-        }
-        if self.box_layout == BoxLayout::NotSet {
-            if let Some(storage) = frame.storage() {
-                if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
-                    self.box_layout = BoxLayout::Horizontally;
-                } else {
-                    self.box_layout = BoxLayout::Vertically;
-                }
-            }
-        }
+        self.setup(frame);
 
         TopBottomPanel::top("header")
             .exact_height(48.0)
@@ -97,16 +26,18 @@ impl App for LlamaApp {
                                 .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
                         );
 
-                        ui.label(
-                            RichText::new("Llama Desktop")
-                                .font(self.title_font.clone())
-                                .strong(),
-                        );
+                        ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                            ui.label(
+                                RichText::new("Llama Desktop")
+                                    .font(self.title_font.clone())
+                                    .strong(),
+                            );
 
-                        ui.label(
-                            RichText::new(&format!("v{}", VERSION.to_string()))
-                                .font(self.small_font.clone()),
-                        );
+                            ui.label(
+                                RichText::new(&format!("v{}", VERSION.to_string()))
+                                    .font(self.small_font.clone()),
+                            );
+                        });
                     });
 
                     uis[1].with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -139,14 +70,14 @@ impl App for LlamaApp {
             });
 
         TopBottomPanel::bottom("footer")
-            .exact_height(28.0)
+            .exact_height(32.0)
             .show(ctx, |ui| {
                 let mut sig_send = false;
                 let mut sig_reset = false;
                 let mut sig_quit = false;
                 let retrieving = STATE.read().retrieving;
 
-                ui.columns(8, |uis| {
+                ui.columns(9, |uis| {
                     uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let text = if retrieving {
                             RichText::new("Ctrl+Enter").weak()
@@ -214,6 +145,28 @@ impl App for LlamaApp {
                                 storage.flush();
                             }
                         }
+                    });
+                    uis[8].with_layout(Layout::right_to_left(Align::Min), |ui| {
+                        let mut state = STATE.write();
+                        ComboBox::from_label(RichText::new("Timeout:").strong())
+                            .selected_text(format!("{}s", TIMEOUTS[state.timeout_idx]))
+                            .show_ui(ui, |ui| {
+                                let mut idx = state.timeout_idx;
+                                for (i, tm) in TIMEOUTS.iter().enumerate() {
+                                    let value =
+                                        ui.selectable_value(&mut idx, i, format!("{}s", tm));
+                                    if value.clicked() {
+                                        idx = i;
+                                    }
+                                }
+                                if idx != state.timeout_idx {
+                                    state.timeout_idx = idx;
+                                    if let Some(storage) = frame.storage_mut() {
+                                        storage.set_string("timeout", format!("{}", TIMEOUTS[idx]));
+                                        storage.flush();
+                                    }
+                                }
+                            });
                     });
                 });
 
@@ -319,15 +272,4 @@ impl App for LlamaApp {
 }
 
 #[dynamic]
-static RUNTIME: Runtime = Runtime::new().unwrap();
-
-#[dynamic]
 static mut MD_CACHE: CommonMarkCache = CommonMarkCache::default();
-
-#[dynamic]
-static VERSION: String = {
-    let cargo = include_str!("../Cargo.toml").parse::<Table>().unwrap();
-    let package = cargo["package"].as_table().unwrap();
-    let version = package["version"].as_str().unwrap();
-    return version.to_string();
-};
