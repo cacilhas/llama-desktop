@@ -148,26 +148,34 @@ impl App for super::LlamaApp {
                         }
                     });
                     uis[8].with_layout(Layout::right_to_left(Align::Min), |ui| {
-                        let mut state = STATE.write();
-                        ComboBox::from_label(RichText::new("Timeout:").strong())
-                            .selected_text(format!("{}s", TIMEOUTS[state.timeout_idx]))
-                            .show_ui(ui, |ui| {
-                                let mut idx = state.timeout_idx;
-                                for (i, tm) in TIMEOUTS.iter().enumerate() {
-                                    let value =
-                                        ui.selectable_value(&mut idx, i, format!("{}s", tm));
-                                    if value.clicked() {
-                                        idx = i;
+                        if STATE.read().retrieving {
+                            ui.label(format!("{}s", TIMEOUTS[STATE.read().timeout_idx]));
+                            ui.label(RichText::new("Timeout:").strong());
+                        } else {
+                            let mut state = STATE.write();
+                            ComboBox::from_label(RichText::new("Timeout:").strong())
+                                .selected_text(format!("{}s", TIMEOUTS[state.timeout_idx]))
+                                .show_ui(ui, |ui| {
+                                    let mut idx = state.timeout_idx;
+                                    for (i, tm) in TIMEOUTS.iter().enumerate() {
+                                        let value =
+                                            ui.selectable_value(&mut idx, i, format!("{}s", tm));
+                                        if value.clicked() {
+                                            idx = i;
+                                        }
                                     }
-                                }
-                                if idx != state.timeout_idx {
-                                    state.timeout_idx = idx;
-                                    if let Some(storage) = frame.storage_mut() {
-                                        storage.set_string("timeout", format!("{}", TIMEOUTS[idx]));
-                                        storage.flush();
+                                    if idx != state.timeout_idx {
+                                        state.timeout_idx = idx;
+                                        if let Some(storage) = frame.storage_mut() {
+                                            storage.set_string(
+                                                "timeout",
+                                                format!("{}", TIMEOUTS[idx]),
+                                            );
+                                            storage.flush();
+                                        }
                                     }
-                                }
-                            });
+                                });
+                        }
                     });
                 });
 
