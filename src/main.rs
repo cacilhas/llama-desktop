@@ -21,7 +21,7 @@ fn main() {
         .with_inner_size([800.0, 1200.0])
         .with_min_inner_size([800.0, 600.0]);
 
-    let fonts = initialize_fonts();
+    let fonts = initialize_fonts().unwrap();
     let options = eframe::NativeOptions {
         viewport,
         centered: true,

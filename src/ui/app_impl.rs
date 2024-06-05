@@ -3,6 +3,7 @@ use std::process;
 use super::BoxLayout;
 use super::RUNTIME;
 use crate::fonts::set_font_size;
+use crate::logics::Sender;
 use crate::logics::*;
 use eframe::Frame;
 use eframe::*;
@@ -173,7 +174,7 @@ impl App for super::LlamaApp {
                 if !retrieving {
                     if sig_send || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter)) {
                         STATE.write().retrieving = true;
-                        RUNTIME.spawn(send());
+                        RUNTIME.spawn(Sender::default().send());
                     }
                     if sig_reset || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::R)) {
                         STATE.write().reset();
