@@ -1,5 +1,5 @@
 mod app_impl;
-mod llama_app;
+mod frame_impl;
 
 use eframe::egui::{FontId, ImageSource};
 use tokio::runtime::Runtime;
