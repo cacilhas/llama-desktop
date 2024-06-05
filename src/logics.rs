@@ -18,6 +18,7 @@ pub struct State {
     pub retrieving: bool,
     pub reload: bool,
     pub timeout_idx: usize,
+    pub escape: bool,
     pub context: Vec<i32>,
 }
 
@@ -42,6 +43,7 @@ impl Drop for Sender {
         let mut state = STATE.write();
         state.output.push_str(HR);
         state.retrieving = false;
+        state.escape = false;
         state.reload = true;
     }
 }
@@ -50,7 +52,7 @@ impl Sender {
     pub async fn send(self) {
         if let Err(err) = self.do_send().await {
             let mut state = STATE.write();
-            state.output.push_str("## ERROR:\n\n");
+            state.output.push_str("\n## ERROR:\n");
             state.output.push_str(&format!("{}", err));
         }
     }
@@ -100,6 +102,7 @@ impl Sender {
         let timeout = time::Duration::from_secs(TIMEOUTS[STATE.read().timeout_idx] as u64);
         _dbg!(&timeout);
 
+        self.check_escape()?;
         match time::timeout(timeout, client.post(uri).body(payload).send()).await {
             Ok(Ok(mut response)) => {
                 if !response.status().is_success() {
@@ -107,10 +110,12 @@ impl Sender {
                 }
 
                 _dbg!(&response);
+                self.check_escape()?;
                 'read: while let Ok(current) = time::timeout(timeout, response.chunk()).await {
                     match current {
                         Ok(Some(current)) => {
                             _dbg!(&current);
+                            self.check_escape()?;
                             let chunk: Response =
                                 serde_json::from_str(std::str::from_utf8(current.borrow())?)?;
                             let mut state = STATE.write();
@@ -159,6 +164,14 @@ impl Sender {
         _eprintln!("{}", message.clone().into());
         Err(eyre::eyre![message.into()])
     }
+
+    fn check_escape(&self) -> Result<()> {
+        if STATE.read().escape {
+            Err(eyre::eyre!["Escape key pressed."])
+        } else {
+            Ok(())
+        }
+    }
 }
 
 #[dynamic]
@@ -169,6 +182,7 @@ pub static mut STATE: State = State {
     output: String::new(),
     retrieving: false,
     reload: true,
+    escape: false,
     timeout_idx: usize::max_value(),
     context: Vec::new(),
 };

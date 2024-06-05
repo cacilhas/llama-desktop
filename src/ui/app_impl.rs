@@ -184,6 +184,10 @@ impl App for super::LlamaApp {
                 if sig_quit || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Q)) {
                     process::exit(0);
                 }
+
+                if STATE.read().retrieving && ui.input(|st| st.key_pressed(Key::Escape)) {
+                    STATE.write().escape = true;
+                }
             });
 
         CentralPanel::default().show(ctx, |ui| {
