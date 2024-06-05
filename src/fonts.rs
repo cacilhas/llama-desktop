@@ -1,8 +1,9 @@
 use std::sync::Arc;
 
 use eframe::egui::{self, Context, FontDefinitions, Style, TextStyle};
+use eyre::Result;
 
-pub fn initialize_fonts() -> FontDefinitions {
+pub fn initialize_fonts() -> Result<FontDefinitions> {
     let arial = egui::FontData::from_static(include_bytes!("assets/aclonica.ttf"));
     let sans = egui::FontData::from_static(include_bytes!("assets/bellota.ttf"));
     let mono = egui::FontData::from_static(include_bytes!("assets/noto-sans-mono.ttf"));
@@ -19,16 +20,16 @@ pub fn initialize_fonts() -> FontDefinitions {
     fonts
         .families
         .get_mut(&egui::FontFamily::Proportional)
-        .unwrap()
+        .ok_or(eyre::eyre!["couldn't load proportional font"])?
         .insert(0, "sans".into());
 
     fonts
         .families
         .get_mut(&egui::FontFamily::Monospace)
-        .unwrap()
+        .ok_or(eyre::eyre!["couldn't load monospace font"])?
         .insert(0, "monospace".into());
 
-    fonts
+    Ok(fonts)
 }
 
 pub fn set_font_size(ctx: &Context, size: f32) {

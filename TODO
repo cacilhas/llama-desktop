@@ -1,3 +1,2 @@
-- Mark UI as done at the end of the process by using Drop.
 - Create a function to deal with timeout and failures apart.
 - Add a save procedure.
