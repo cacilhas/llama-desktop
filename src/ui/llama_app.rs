@@ -60,7 +60,12 @@ impl LlamaApp {
             let selected_model = storage
                 .get_string("selected-model")
                 .unwrap_or("0".to_string());
-            STATE.write().selected_model = selected_model.parse().unwrap_or(0);
+            let idx: usize = selected_model.parse().unwrap_or(0);
+            if idx < STATE.read().models.len() {
+                STATE.write().selected_model = idx;
+            } else {
+                STATE.write().selected_model = 0;
+            }
         }
     }
 
@@ -74,9 +79,10 @@ impl LlamaApp {
             for (idx, tm) in TIMEOUTS.iter().enumerate() {
                 if *tm == timeout {
                     STATE.write().timeout_idx = idx;
-                    break;
+                    return;
                 }
             }
+            STATE.write().timeout_idx = 1;
         }
     }
 
