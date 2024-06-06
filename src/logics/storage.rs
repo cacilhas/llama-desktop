@@ -169,6 +169,10 @@ impl Parser {
 
     async fn feed_server(&mut self, question: impl Into<String>) -> Result<()> {
         let question = question.into();
+        if question.is_empty() {
+            return Ok(());
+        }
+
         let mut headers = header::HeaderMap::new();
         headers.insert(
             "Content-Type",
