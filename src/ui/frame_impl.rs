@@ -1,5 +1,3 @@
-use std::process;
-
 use super::BoxLayout;
 use super::RUNTIME;
 use crate::fonts::set_font_size;
@@ -15,7 +13,8 @@ impl App for super::LlamaApp {
         ctx.set_visuals(Visuals::dark());
         let mut send_clicked = false;
         let mut quit_clicked = false;
-        let mut reset_clicked = false;
+        let mut new_clicked = false;
+        let mut save_clicked = false;
 
         set_font_size(ctx, 20.0);
         self.setup(frame);
@@ -24,19 +23,39 @@ impl App for super::LlamaApp {
         TopBottomPanel::top("header")
             .exact_height(48.0)
             .show(ctx, |ui| {
-                ui.columns(8, |cols| {
+                ui.columns(3, |cols| {
                     cols[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
                         ui.menu_button("Actions", |ui| {
+                            ui.horizontal(|ui| {
+                                Image::new(self.logo.clone())
+                                    .fit_to_exact_size(Vec2 { x: 24.0, y: 24.0 })
+                                    .ui(ui);
+                                ui.label(RichText::new("Llama Desktop").strong());
+                                ui.add_space(100.0);
+                            });
+                            ui.separator();
+
                             if retrieving {
-                                let _ = ui.button(RichText::new("Send").weak());
-                                let _ = ui.button(RichText::new("Reset").weak());
+                                let _ = ui.label(RichText::new("New Context").weak());
+                                let _ = ui.label(RichText::new("Save").weak());
+                                let _ = ui.label(RichText::new("Send").weak());
                             } else {
-                                send_clicked = Button::new(RichText::new("Send").strong())
-                                    .shortcut_text(&format!("{}Enter", CMD))
+                                new_clicked = Button::new(RichText::new("New Context").strong())
+                                    .shortcut_text(&format!("{}N", CMD))
                                     .ui(ui)
                                     .clicked();
-                                reset_clicked = Button::new(RichText::new("Reset").strong())
-                                    .shortcut_text(&format!("{}R", CMD))
+
+                                if STATE.read().output.is_empty() {
+                                    let _ = ui.label(RichText::new("Save").weak());
+                                } else {
+                                    save_clicked = Button::new(RichText::new("Save").strong())
+                                        .shortcut_text(&format!("{}S", CMD))
+                                        .ui(ui)
+                                        .clicked();
+                                }
+
+                                send_clicked = Button::new(RichText::new("Send").strong())
+                                    .shortcut_text(&format!("{}Enter", CMD))
                                     .ui(ui)
                                     .clicked();
                             }
@@ -50,27 +69,29 @@ impl App for super::LlamaApp {
                         });
                     });
 
-                    cols[1].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        ui.add(
-                            Image::new(self.logo.clone())
-                                .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
-                        );
-
-                        ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
-                            ui.label(
-                                RichText::new("Llama Desktop")
-                                    .font(self.title_font.clone())
-                                    .strong(),
+                    cols[1].with_layout(Layout::top_down_justified(Align::Center), |ui| {
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                Image::new(self.logo.clone())
+                                    .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
                             );
 
-                            ui.label(
-                                RichText::new(&format!("v{}", VERSION.to_string()))
-                                    .font(self.small_font.clone()),
-                            );
+                            ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                                ui.label(
+                                    RichText::new("Llama Desktop")
+                                        .font(self.title_font.clone())
+                                        .strong(),
+                                );
+
+                                ui.label(
+                                    RichText::new(&format!("v{}", VERSION.to_string()))
+                                        .font(self.small_font.clone()),
+                                );
+                            });
                         });
                     });
 
-                    cols[7].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    cols[2].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let mut state = STATE.write();
                         ComboBox::from_label(
                             RichText::new("Model:")
@@ -258,11 +279,17 @@ impl App for super::LlamaApp {
                 STATE.write().escape = true;
             }
         } else {
+            if new_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::N)) {
+                STATE.write().reset();
+            }
+            if save_clicked
+                || (!STATE.read().output.is_empty()
+                    && ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::S)))
+            {
+                RUNTIME.spawn(storage::save_content(STATE.read().output.to_owned()));
+            }
             if send_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::Enter)) {
                 RUNTIME.spawn(Sender::default().send());
-            }
-            if reset_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::R)) {
-                STATE.write().reset();
             }
         }
 

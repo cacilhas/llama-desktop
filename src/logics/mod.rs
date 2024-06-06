@@ -1,5 +1,6 @@
 mod sender;
 mod state;
+pub mod storage;
 mod timeouts;
 mod version;
 
