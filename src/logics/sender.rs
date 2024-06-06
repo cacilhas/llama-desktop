@@ -25,6 +25,8 @@ impl Drop for Sender {
 
 impl Sender {
     pub async fn send(self) {
+        STATE.write().retrieving = true;
+
         if let Err(err) = self.do_send().await {
             let mut state = STATE.write();
             _eprintln!("{:?}", err);
