@@ -14,6 +14,7 @@ impl App for super::LlamaApp {
         let mut send_clicked = false;
         let mut quit_clicked = false;
         let mut new_clicked = false;
+        let mut load_clicked = false;
         let mut save_clicked = false;
 
         set_font_size(ctx, 20.0);
@@ -37,11 +38,17 @@ impl App for super::LlamaApp {
 
                             if retrieving {
                                 let _ = ui.label(RichText::new("New Context").weak());
+                                let _ = ui.label(RichText::new("Load").weak());
                                 let _ = ui.label(RichText::new("Save").weak());
                                 let _ = ui.label(RichText::new("Send").weak());
                             } else {
                                 new_clicked = Button::new(RichText::new("New Context").strong())
                                     .shortcut_text(&format!("{}N", CMD))
+                                    .ui(ui)
+                                    .clicked();
+
+                                load_clicked = Button::new(RichText::new("Load").strong())
+                                    .shortcut_text(&format!("{}O", CMD))
                                     .ui(ui)
                                     .clicked();
 
@@ -281,6 +288,9 @@ impl App for super::LlamaApp {
         } else {
             if new_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::N)) {
                 STATE.write().reset();
+            }
+            if load_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::O)) {
+                RUNTIME.spawn(storage::load());
             }
             if save_clicked
                 || (!STATE.read().output.is_empty()

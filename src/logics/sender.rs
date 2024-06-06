@@ -39,11 +39,6 @@ impl Sender {
         _eprintln!("SENDING CONTENT");
 
         let context = STATE.read().context.clone();
-        let context: Option<Vec<u16>> = if context.is_empty() {
-            None
-        } else {
-            Some(context.iter().map(|e| *e as u16).collect())
-        };
         _dbg!(&context);
 
         let input = STATE.read().input.to_owned();
@@ -70,7 +65,11 @@ impl Sender {
                 model: state.models[state.selected_model].to_owned(),
                 prompt: input,
                 stream: true,
-                context,
+                context: if context.is_empty() {
+                    None
+                } else {
+                    Some(context)
+                },
             }
         };
         _dbg!(&payload);
@@ -95,7 +94,7 @@ impl Sender {
             let mut state = STATE.write();
             state.output.push_str(&chunk.response);
             if let Some(context) = chunk.context {
-                state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
+                state.context = context.clone();
             }
             if chunk.done {
                 break 'read;

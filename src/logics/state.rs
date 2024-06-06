@@ -8,7 +8,7 @@ pub struct State {
     pub reload: bool,
     pub timeout_idx: usize,
     pub escape: bool,
-    pub context: Vec<i32>,
+    pub context: Vec<u16>,
 }
 
 impl State {
@@ -21,6 +21,17 @@ impl State {
         self.context = Vec::new();
         _dbg!(self);
     }
+}
+
+pub fn set_model(model: impl Into<String>) -> bool {
+    let model = model.into();
+    for (idx, model_) in STATE.read().models.iter().enumerate() {
+        if *model_ == model {
+            STATE.write().selected_model = idx;
+            return true;
+        }
+    }
+    return false;
 }
 
 #[dynamic]
