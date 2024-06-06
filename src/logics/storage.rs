@@ -1,6 +1,6 @@
 use std::{fs::File, path::PathBuf};
 
-use super::{set_model, STATE};
+use super::{set_model, STATE, TIMEOUTS};
 use crate::{
     helpers::HR,
     ollama,
@@ -11,6 +11,7 @@ use comrak::{markdown_to_html, Options};
 use eyre::{eyre, OptionExt, Result};
 use reqwest::header;
 use rfd::FileDialog;
+use tokio::time;
 
 enum Step {
     ReadingHTML,
@@ -173,6 +174,7 @@ impl Parser {
             return Ok(());
         }
 
+        let timeout = time::Duration::from_secs(TIMEOUTS[STATE.read().timeout_idx] as u64);
         let mut headers = header::HeaderMap::new();
         headers.insert(
             "Content-Type",
@@ -195,7 +197,7 @@ impl Parser {
         };
         let uri = ollama::path("/api/generate");
         let payload = serde_json::to_string(&payload)?;
-        let response = client.post(uri).body(payload).send().await?;
+        let response = time::timeout(timeout, client.post(uri).body(payload).send()).await??;
 
         if response.status().is_success() {
             let value: Response = serde_json::from_str(&response.text().await?)?;
