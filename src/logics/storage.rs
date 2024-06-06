@@ -112,6 +112,8 @@ impl Parser {
         let content = self.0.clone();
 
         for line in content.lines() {
+            let line = line.replace("&gt;", ">").replace("&lt;", "<");
+
             match step {
                 ReadingHTML => {
                     if line == "</html>" {
@@ -121,7 +123,6 @@ impl Parser {
                 }
 
                 ReadingHeader => {
-                    let line = line.replace("&gt;", ">").replace("&lt;", "<");
                     if line.starts_with("model: ") {
                         let model = &line[7..];
                         if !set_model(model) {
@@ -137,7 +138,6 @@ impl Parser {
                 }
 
                 ReadingQuestion => {
-                    let line = line.replace("&gt;", ">").replace("&lt;", "<");
                     STATE.write().output.push_str(&line);
                     STATE.write().output.push_str("\n");
 
@@ -152,7 +152,6 @@ impl Parser {
                 }
 
                 ReadingAnswer => {
-                    let line = line.replace("&gt;", ">").replace("&lt;", "<");
                     STATE.write().output.push_str(&line);
                     STATE.write().output.push_str("\n");
 
