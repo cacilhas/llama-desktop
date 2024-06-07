@@ -2,7 +2,6 @@ use std::{fs::File, path::PathBuf};
 
 use super::{set_model, STATE, TIMEOUTS};
 use crate::{
-    helpers::HR,
     ollama,
     protocol::{Request, Response},
 };
@@ -111,7 +110,6 @@ impl Drop for Parser {
     fn drop(&mut self) {
         _eprintln!("FINISHED");
         let mut state = STATE.write();
-        state.output.push_str(HR);
         state.retrieving = false;
         state.escape = false;
         state.reload = true;
@@ -175,7 +173,9 @@ impl Parser {
                     } else {
                         _eprintln!("end of question");
                         step = ReadingAnswer;
-                        self.feed_server(&question).await?;
+                        if let Err(err) = self.feed_server(&question).await {
+                            eprintln!("{:?}", err);
+                        }
                         question.clear();
                         continue;
                     }
