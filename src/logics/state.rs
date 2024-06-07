@@ -1,5 +1,6 @@
 #[derive(Debug)]
 pub struct State {
+    pub title: String,
     pub models: Vec<String>,
     pub selected_model: usize,
     pub input: String,
@@ -8,23 +9,41 @@ pub struct State {
     pub reload: bool,
     pub timeout_idx: usize,
     pub escape: bool,
-    pub context: Vec<i32>,
+    pub context: Vec<u16>,
 }
 
 impl State {
     pub fn reset(&mut self) {
-        _eprintln!("RESETING STATE");
+        warn!("RESETING STATE");
         self.input = "Why the sky is blue?".to_owned();
+        self.title = String::new();
         self.output = String::new();
         self.retrieving = false;
         self.reload = true;
         self.context = Vec::new();
-        _dbg!(self);
+        debug!(self);
     }
+}
+
+pub fn set_model(model: impl Into<String>) -> bool {
+    let model = model.into();
+    warn!("setting model to {}", &model);
+    let models = STATE.read().models.clone();
+    for (idx, model_) in models.iter().enumerate() {
+        debug!(idx, model_);
+        if model_.eq(&model) {
+            warn!("model {} found", &model);
+            STATE.write().selected_model = idx;
+            return true;
+        }
+    }
+    warn!("model {} not found", &model);
+    return false;
 }
 
 #[dynamic]
 pub static mut STATE: State = State {
+    title: String::new(),
     models: Vec::new(),
     selected_model: usize::max_value(),
     input: "Why the sky is blue?".to_owned(),

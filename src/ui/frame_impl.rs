@@ -1,5 +1,3 @@
-use std::process;
-
 use super::BoxLayout;
 use super::RUNTIME;
 use crate::fonts::set_font_size;
@@ -13,35 +11,94 @@ use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 impl App for super::LlamaApp {
     fn update(&mut self, ctx: &Context, frame: &mut Frame) {
         ctx.set_visuals(Visuals::dark());
+        let mut send_clicked = false;
+        let mut quit_clicked = false;
+        let mut new_clicked = false;
+        let mut load_clicked = false;
+        let mut save_clicked = false;
 
         set_font_size(ctx, 20.0);
         self.setup(frame);
+        let retrieving = STATE.read().retrieving;
 
         TopBottomPanel::top("header")
             .exact_height(48.0)
             .show(ctx, |ui| {
-                ui.columns(2, |uis| {
-                    uis[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        ui.add(
-                            Image::new(self.logo.clone())
-                                .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
-                        );
+                ui.columns(3, |cols| {
+                    cols[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        ui.menu_button("Actions", |ui| {
+                            ui.horizontal(|ui| {
+                                Image::new(self.logo.clone())
+                                    .fit_to_exact_size(Vec2 { x: 24.0, y: 24.0 })
+                                    .ui(ui);
+                                ui.label(RichText::new("Llama Desktop").strong());
+                                ui.add_space(100.0);
+                            });
+                            ui.separator();
 
-                        ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
-                            ui.label(
-                                RichText::new("Llama Desktop")
-                                    .font(self.title_font.clone())
-                                    .strong(),
-                            );
+                            if retrieving {
+                                let _ = ui.label(RichText::new("New Context").weak());
+                                let _ = ui.label(RichText::new("Load").weak());
+                                let _ = ui.label(RichText::new("Save").weak());
+                                let _ = ui.label(RichText::new("Send").weak());
+                            } else {
+                                new_clicked = Button::new(RichText::new("New Context").strong())
+                                    .shortcut_text(&format!("{}N", CMD))
+                                    .ui(ui)
+                                    .clicked();
 
-                            ui.label(
-                                RichText::new(&format!("v{}", VERSION.to_string()))
-                                    .font(self.small_font.clone()),
-                            );
+                                load_clicked = Button::new(RichText::new("Load").strong())
+                                    .shortcut_text(&format!("{}O", CMD))
+                                    .ui(ui)
+                                    .clicked();
+
+                                if STATE.read().output.is_empty() {
+                                    let _ = ui.label(RichText::new("Save").weak());
+                                } else {
+                                    save_clicked = Button::new(RichText::new("Save").strong())
+                                        .shortcut_text(&format!("{}S", CMD))
+                                        .ui(ui)
+                                        .clicked();
+                                }
+
+                                send_clicked = Button::new(RichText::new("Send").strong())
+                                    .shortcut_text(&format!("{}Enter", CMD))
+                                    .ui(ui)
+                                    .clicked();
+                            }
+
+                            ui.separator();
+
+                            quit_clicked = Button::new(RichText::new("Quit").strong())
+                                .shortcut_text(&format!("{}Q", CMD))
+                                .ui(ui)
+                                .clicked();
                         });
                     });
 
-                    uis[1].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    cols[1].with_layout(Layout::top_down_justified(Align::Center), |ui| {
+                        ui.horizontal(|ui| {
+                            ui.add(
+                                Image::new(self.logo.clone())
+                                    .fit_to_exact_size(Vec2 { x: 48.0, y: 48.0 }),
+                            );
+
+                            ui.with_layout(Layout::left_to_right(Align::Max), |ui| {
+                                ui.label(
+                                    RichText::new("Llama Desktop")
+                                        .font(self.title_font.clone())
+                                        .strong(),
+                                );
+
+                                ui.label(
+                                    RichText::new(&format!("v{}", VERSION.to_string()))
+                                        .font(self.small_font.clone()),
+                                );
+                            });
+                        });
+                    });
+
+                    cols[2].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         let mut state = STATE.write();
                         ComboBox::from_label(
                             RichText::new("Model:")
@@ -73,87 +130,15 @@ impl App for super::LlamaApp {
         TopBottomPanel::bottom("footer")
             .exact_height(32.0)
             .show(ctx, |ui| {
-                let mut sig_send = false;
-                let mut sig_reset = false;
-                let mut sig_quit = false;
-                let retrieving = STATE.read().retrieving;
-
-                ui.columns(9, |uis| {
-                    uis[0].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        let text = if retrieving {
-                            RichText::new("Ctrl+Enter").weak()
-                        } else {
-                            RichText::new("Ctrl+Enter").strong()
-                        };
-                        sig_send |= ui.label(text).clicked();
-                    });
-                    uis[1].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        let text = if retrieving {
-                            RichText::new("send").weak()
-                        } else {
-                            RichText::new("send")
-                        };
-                        sig_send |= ui.label(text).clicked();
-                    });
-                    uis[2].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        let text = if retrieving {
-                            RichText::new("Ctrl+R").weak()
-                        } else {
-                            RichText::new("Ctrl+R").strong()
-                        };
-                        sig_reset |= ui.label(text).clicked();
-                    });
-                    uis[3].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        let text = if retrieving {
-                            RichText::new("reset").weak()
-                        } else {
-                            RichText::new("reset")
-                        };
-                        sig_send |= ui.label(text).clicked();
-                    });
-                    uis[4].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        sig_quit |= ui.label(RichText::new("Ctrl+Q").strong()).clicked();
-                    });
-                    uis[5].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        sig_quit |= ui.label("quit").clicked();
-                    });
-                    uis[6].with_layout(Layout::right_to_left(Align::Center), |ui| {
-                        if ImageButton::new(
-                            Image::new(self.vertical.clone())
-                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
-                        )
-                        .ui(ui)
-                        .clicked()
-                        {
-                            self.box_layout = BoxLayout::Vertically;
-                            if let Some(storage) = frame.storage_mut() {
-                                storage.set_string("layout", "V".to_string());
-                                storage.flush();
-                            }
-                        }
-                    });
-                    uis[7].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        if ImageButton::new(
-                            Image::new(self.horizontal.clone())
-                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
-                        )
-                        .ui(ui)
-                        .clicked()
-                        {
-                            self.box_layout = BoxLayout::Horizontally;
-                            if let Some(storage) = frame.storage_mut() {
-                                storage.set_string("layout", "H".to_string());
-                                storage.flush();
-                            }
-                        }
-                    });
-                    uis[8].with_layout(Layout::right_to_left(Align::Min), |ui| {
-                        if STATE.read().retrieving {
+                ui.columns(16, |cols| {
+                    cols[1].with_layout(Layout::right_to_left(Align::Min), |ui| {
+                        let text = RichText::new("Timeout:").strong();
+                        if retrieving {
                             ui.label(format!("{}s", TIMEOUTS[STATE.read().timeout_idx]));
-                            ui.label(RichText::new("Timeout:").strong());
+                            ui.label(text);
                         } else {
                             let mut state = STATE.write();
-                            ComboBox::from_label(RichText::new("Timeout:").strong())
+                            ComboBox::from_label(text)
                                 .selected_text(format!("{}s", TIMEOUTS[state.timeout_idx]))
                                 .show_ui(ui, |ui| {
                                     let mut idx = state.timeout_idx;
@@ -177,25 +162,39 @@ impl App for super::LlamaApp {
                                 });
                         }
                     });
+
+                    cols[14].with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if ImageButton::new(
+                            Image::new(self.vertical.clone())
+                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
+                        )
+                        .ui(ui)
+                        .clicked()
+                        {
+                            self.box_layout = BoxLayout::Vertically;
+                            if let Some(storage) = frame.storage_mut() {
+                                storage.set_string("layout", "V".to_string());
+                                storage.flush();
+                            }
+                        }
+                    });
+
+                    cols[15].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        if ImageButton::new(
+                            Image::new(self.horizontal.clone())
+                                .fit_to_exact_size(Vec2 { x: 20.0, y: 20.0 }),
+                        )
+                        .ui(ui)
+                        .clicked()
+                        {
+                            self.box_layout = BoxLayout::Horizontally;
+                            if let Some(storage) = frame.storage_mut() {
+                                storage.set_string("layout", "H".to_string());
+                                storage.flush();
+                            }
+                        }
+                    });
                 });
-
-                if !retrieving {
-                    if sig_send || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Enter)) {
-                        STATE.write().retrieving = true;
-                        RUNTIME.spawn(Sender::default().send());
-                    }
-                    if sig_reset || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::R)) {
-                        STATE.write().reset();
-                    }
-                }
-
-                if sig_quit || ui.input(|st| st.modifiers.ctrl && st.key_pressed(Key::Q)) {
-                    process::exit(0);
-                }
-
-                if STATE.read().retrieving && ui.input(|st| st.key_pressed(Key::Escape)) {
-                    STATE.write().escape = true;
-                }
             });
 
         CentralPanel::default().show(ctx, |ui| {
@@ -256,7 +255,7 @@ impl App for super::LlamaApp {
                 BoxLayout::NotSet => (),
             }
 
-            if STATE.read().retrieving {
+            if retrieving {
                 let radius: f32 = 16.0;
                 let (min, max) = match body {
                     Some(rect) => {
@@ -281,8 +280,40 @@ impl App for super::LlamaApp {
                 STATE.write().reload = false;
             }
         });
+
+        if retrieving {
+            if ctx.input(|st| st.key_pressed(Key::Escape)) {
+                STATE.write().escape = true;
+            }
+        } else {
+            if new_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::N)) {
+                STATE.write().reset();
+            }
+            if load_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::O)) {
+                RUNTIME.spawn(storage::load());
+            }
+            if save_clicked
+                || (!STATE.read().output.is_empty()
+                    && ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::S)))
+            {
+                RUNTIME.spawn(storage::save_content(STATE.read().output.to_owned()));
+            }
+            if send_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::Enter)) {
+                RUNTIME.spawn(Sender::default().send());
+            }
+        }
+
+        if quit_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::Q)) {
+            ctx.send_viewport_cmd(ViewportCommand::Close);
+        }
     }
 }
 
 #[dynamic]
 static mut MD_CACHE: CommonMarkCache = CommonMarkCache::default();
+
+#[cfg(not(target_os = "macos"))]
+static CMD: &str = "Ctrl+";
+
+#[cfg(target_os = "macos")]
+static CMD: &str = "⌘";

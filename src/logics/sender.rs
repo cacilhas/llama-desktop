@@ -14,7 +14,7 @@ pub struct Sender;
 
 impl Drop for Sender {
     fn drop(&mut self) {
-        _eprintln!("FINISHED");
+        warn!("FINISHED");
         let mut state = STATE.write();
         state.output.push_str(HR);
         state.retrieving = false;
@@ -25,27 +25,28 @@ impl Drop for Sender {
 
 impl Sender {
     pub async fn send(self) {
+        STATE.write().retrieving = true;
+
         if let Err(err) = self.do_send().await {
             let mut state = STATE.write();
-            _eprintln!("{:?}", err);
+            warn!("{:?}", err);
             state.output.push_str("\n## ERROR:\n");
             state.output.push_str(&format!("{}", err));
         }
     }
 
     async fn do_send(&self) -> Result<()> {
-        _eprintln!("SENDING CONTENT");
+        warn!("SENDING CONTENT");
 
         let context = STATE.read().context.clone();
-        let context: Option<Vec<u16>> = if context.is_empty() {
-            None
-        } else {
-            Some(context.iter().map(|e| *e as u16).collect())
-        };
-        _dbg!(&context);
+        debug!(&context);
 
         let input = STATE.read().input.to_owned();
-        _dbg!(&input);
+        debug!(&input);
+        if STATE.read().title.is_empty() {
+            STATE.write().title = input.to_owned();
+        }
+
         STATE
             .write()
             .output
@@ -58,7 +59,7 @@ impl Sender {
             "Content-Type",
             header::HeaderValue::from_static("application/json"),
         );
-        _dbg!(&headers);
+        debug!(&headers);
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()?;
@@ -68,15 +69,19 @@ impl Sender {
                 model: state.models[state.selected_model].to_owned(),
                 prompt: input,
                 stream: true,
-                context,
+                context: if context.is_empty() {
+                    None
+                } else {
+                    Some(context)
+                },
             }
         };
-        _dbg!(&payload);
+        debug!(&payload);
         let payload = serde_json::to_string(&payload)?;
         let uri = ollama::path("/api/generate");
-        _dbg!(&uri);
+        debug!(&uri);
         let timeout = time::Duration::from_secs(TIMEOUTS[STATE.read().timeout_idx] as u64);
-        _dbg!(&timeout);
+        debug!(&timeout);
 
         self.check_escape()?;
         let mut response = time::timeout(timeout, client.post(uri).body(payload).send()).await??;
@@ -84,23 +89,23 @@ impl Sender {
             return Err(eyre![response.text().await?]);
         }
 
-        _dbg!(&response);
+        debug!(&response);
         self.check_escape()?;
         'read: while let Some(current) = time::timeout(timeout, response.chunk()).await?? {
-            _dbg!(&current);
+            debug!(&current);
             self.check_escape()?;
             let chunk: Response = serde_json::from_str(std::str::from_utf8(current.borrow())?)?;
             let mut state = STATE.write();
             state.output.push_str(&chunk.response);
             if let Some(context) = chunk.context {
-                state.context = context.iter().map(|e| *e as i32).collect::<Vec<i32>>();
+                state.context = context.clone();
             }
             if chunk.done {
                 break 'read;
             }
         }
 
-        _eprintln!("DONE");
+        warn!("DONE");
         Ok(())
     }
 
