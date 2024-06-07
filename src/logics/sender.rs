@@ -43,6 +43,10 @@ impl Sender {
 
         let input = STATE.read().input.to_owned();
         _dbg!(&input);
+        if STATE.read().title.is_empty() {
+            STATE.write().title = input.to_owned();
+        }
+
         STATE
             .write()
             .output
