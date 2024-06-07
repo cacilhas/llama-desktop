@@ -40,7 +40,7 @@ pub async fn save_content(content: impl Into<String>) {
             state.models[state.selected_model].to_owned()
         };
         warn!("caching data");
-        _dbg!(&model);
+        debug!(&model);
         let mut html = String::new();
         html.push_str("<!DOCTYPE html>\n");
         html.push_str("<html>\n");
@@ -128,8 +128,8 @@ impl Parser {
         let content = self.0.clone();
 
         for line in content.lines() {
-            _dbg!(step);
-            _dbg!(line);
+            debug!(step);
+            debug!(line);
             if line == "-->" || line == "</html>" {
                 warn!("IT SHOULD NEVER HAPPEN");
                 continue;
@@ -234,13 +234,13 @@ impl Parser {
         };
         let uri = ollama::path("/api/generate");
         let payload = serde_json::to_string(&payload)?;
-        _dbg!(&client, &uri, &payload);
+        debug!(&client, &uri, &payload);
         let response = time::timeout(timeout, client.post(uri).body(payload).send()).await??;
 
         if response.status().is_success() {
             let value: Response = serde_json::from_str(&response.text().await?)?;
             self.1 = value.context.ok_or_eyre("context")?;
-            _dbg!(&self.1);
+            debug!(&self.1);
         }
 
         Ok(())

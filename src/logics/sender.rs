@@ -39,10 +39,10 @@ impl Sender {
         warn!("SENDING CONTENT");
 
         let context = STATE.read().context.clone();
-        _dbg!(&context);
+        debug!(&context);
 
         let input = STATE.read().input.to_owned();
-        _dbg!(&input);
+        debug!(&input);
         if STATE.read().title.is_empty() {
             STATE.write().title = input.to_owned();
         }
@@ -59,7 +59,7 @@ impl Sender {
             "Content-Type",
             header::HeaderValue::from_static("application/json"),
         );
-        _dbg!(&headers);
+        debug!(&headers);
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()?;
@@ -76,12 +76,12 @@ impl Sender {
                 },
             }
         };
-        _dbg!(&payload);
+        debug!(&payload);
         let payload = serde_json::to_string(&payload)?;
         let uri = ollama::path("/api/generate");
-        _dbg!(&uri);
+        debug!(&uri);
         let timeout = time::Duration::from_secs(TIMEOUTS[STATE.read().timeout_idx] as u64);
-        _dbg!(&timeout);
+        debug!(&timeout);
 
         self.check_escape()?;
         let mut response = time::timeout(timeout, client.post(uri).body(payload).send()).await??;
@@ -89,10 +89,10 @@ impl Sender {
             return Err(eyre![response.text().await?]);
         }
 
-        _dbg!(&response);
+        debug!(&response);
         self.check_escape()?;
         'read: while let Some(current) = time::timeout(timeout, response.chunk()).await?? {
-            _dbg!(&current);
+            debug!(&current);
             self.check_escape()?;
             let chunk: Response = serde_json::from_str(std::str::from_utf8(current.borrow())?)?;
             let mut state = STATE.write();

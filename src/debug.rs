@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 #[macro_export]
-macro_rules! _dbg {
+macro_rules! debug {
     ($($arg:tt)*) => {
         dbg!($($arg)*);
     };
@@ -8,7 +8,7 @@ macro_rules! _dbg {
 
 #[cfg(not(debug_assertions))]
 #[macro_export]
-macro_rules! _dbg {
+macro_rules! debug {
     ($($arg:tt)*) => {};
 }
 

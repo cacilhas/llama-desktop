@@ -21,7 +21,7 @@ impl State {
         self.retrieving = false;
         self.reload = true;
         self.context = Vec::new();
-        _dbg!(self);
+        debug!(self);
     }
 }
 
@@ -30,7 +30,7 @@ pub fn set_model(model: impl Into<String>) -> bool {
     warn!("setting model to {}", &model);
     let models = STATE.read().models.clone();
     for (idx, model_) in models.iter().enumerate() {
-        _dbg!(idx, model_);
+        debug!(idx, model_);
         if model_.eq(&model) {
             warn!("model {} found", &model);
             STATE.write().selected_model = idx;
