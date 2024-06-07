@@ -14,7 +14,7 @@ pub struct Sender;
 
 impl Drop for Sender {
     fn drop(&mut self) {
-        _eprintln!("FINISHED");
+        warn!("FINISHED");
         let mut state = STATE.write();
         state.output.push_str(HR);
         state.retrieving = false;
@@ -29,14 +29,14 @@ impl Sender {
 
         if let Err(err) = self.do_send().await {
             let mut state = STATE.write();
-            _eprintln!("{:?}", err);
+            warn!("{:?}", err);
             state.output.push_str("\n## ERROR:\n");
             state.output.push_str(&format!("{}", err));
         }
     }
 
     async fn do_send(&self) -> Result<()> {
-        _eprintln!("SENDING CONTENT");
+        warn!("SENDING CONTENT");
 
         let context = STATE.read().context.clone();
         _dbg!(&context);
@@ -105,7 +105,7 @@ impl Sender {
             }
         }
 
-        _eprintln!("DONE");
+        warn!("DONE");
         Ok(())
     }
 

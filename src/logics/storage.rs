@@ -39,7 +39,7 @@ pub async fn save_content(content: impl Into<String>) {
             let state = STATE.read();
             state.models[state.selected_model].to_owned()
         };
-        _eprintln!("caching data");
+        warn!("caching data");
         _dbg!(&model);
         let mut html = String::new();
         html.push_str("<!DOCTYPE html>\n");
@@ -62,11 +62,11 @@ pub async fn save_content(content: impl Into<String>) {
         html.push_str("&lt;!-- END OF DATA --&gt;\n");
         html.push_str("\n-->\n");
         html.push_str("</html>\n");
-        _eprintln!("done caching");
+        warn!("done caching");
 
         match File::create(&path) {
             Ok(mut file) => {
-                _eprintln!("saving to {:?}", &path);
+                warn!("saving to {:?}", &path);
                 if let Err(err) = file.write_all(html.as_bytes()) {
                     eprintln!("error writing {:?}", &path);
                     eprintln!("{:?}", err);
@@ -92,7 +92,7 @@ async fn do_load() -> Result<()> {
         .add_filter("HTML", &["html", "ldml"])
         .pick_file()
         .ok_or_eyre("error opening file")?;
-    _eprintln!("opening file: {:?}", &path);
+    warn!("opening file: {:?}", &path);
     Parser(get_content(path)?, Vec::new()).load().await?;
     Ok(())
 }
@@ -108,7 +108,7 @@ fn get_content(path: PathBuf) -> Result<String> {
 
 impl Drop for Parser {
     fn drop(&mut self) {
-        _eprintln!("FINISHED");
+        warn!("FINISHED");
         let mut state = STATE.write();
         state.retrieving = false;
         state.escape = false;
@@ -131,7 +131,7 @@ impl Parser {
             _dbg!(step);
             _dbg!(line);
             if line == "-->" || line == "</html>" {
-                _eprintln!("IT SHOULD NEVER HAPPEN");
+                warn!("IT SHOULD NEVER HAPPEN");
                 continue;
             }
             let line = line.replace("&gt;", ">").replace("&lt;", "<");
@@ -139,7 +139,7 @@ impl Parser {
             match step {
                 ReadingHTML => {
                     if line == "filetype: llama markup" {
-                        _eprintln!("end of HTML");
+                        warn!("end of HTML");
                         step = ReadingHeader;
                         continue;
                     }
@@ -149,10 +149,10 @@ impl Parser {
                     if line.starts_with("model: ") {
                         let model = &line[7..];
                         if !set_model(model) {
-                            _eprintln!("using current model");
+                            warn!("using current model");
                         }
                     } else if line == "---" {
-                        _eprintln!("end of headers");
+                        warn!("end of headers");
                         step = ReadingQuestion;
                         continue;
                     }
@@ -160,7 +160,7 @@ impl Parser {
 
                 ReadingQuestion => {
                     if line == "<!-- END OF DATA -->" {
-                        _eprintln!("end of data during a question");
+                        warn!("end of data during a question");
                         self.feed_server(&question).await?;
                         break;
                     }
@@ -171,7 +171,7 @@ impl Parser {
                     if line.starts_with("> ") {
                         question.push_str(&line[2..]);
                     } else {
-                        _eprintln!("end of question");
+                        warn!("end of question");
                         step = ReadingAnswer;
                         if let Err(err) = self.feed_server(&question).await {
                             eprintln!("{:?}", err);
@@ -183,7 +183,7 @@ impl Parser {
 
                 ReadingAnswer => {
                     if line == "<!-- END OF DATA -->" {
-                        _eprintln!("end of data");
+                        warn!("end of data");
                         break;
                     }
 
@@ -191,7 +191,7 @@ impl Parser {
                     STATE.write().output.push_str("\n");
 
                     if line.starts_with("> ") {
-                        _eprintln!("new question");
+                        warn!("new question");
                         question.push_str(&line[2..]);
                         step = ReadingQuestion;
                         continue;
@@ -206,11 +206,11 @@ impl Parser {
     async fn feed_server(&mut self, question: impl Into<String>) -> Result<()> {
         let question = question.into();
         if question.is_empty() {
-            _eprintln!("EMPTY QUESTION");
+            warn!("EMPTY QUESTION");
             return Ok(());
         }
 
-        _eprintln!("feeding question: {}", &question);
+        warn!("feeding question: {}", &question);
         let timeout = time::Duration::from_secs(TIMEOUTS[STATE.read().timeout_idx] as u64);
         let mut headers = header::HeaderMap::new();
         headers.insert(
