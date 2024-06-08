@@ -12,6 +12,7 @@ pub struct LlamaApp {
     title_font: FontId,
     small_font: FontId,
     box_layout: BoxLayout,
+    setupdone: bool,
 }
 
 #[derive(Debug, Default, Eq, PartialEq)]

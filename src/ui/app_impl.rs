@@ -39,10 +39,15 @@ impl LlamaApp {
             title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
             small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
             box_layout: BoxLayout::default(),
+            setupdone: false,
         }
     }
 
     pub(super) fn setup(&mut self, frame: &mut Frame) {
+        if self.setupdone {
+            return;
+        }
+        warn!("running setup");
         if let Some(storage) = frame.storage() {
             self.setup_model(storage);
             self.setup_timeout(storage);
@@ -53,46 +58,42 @@ impl LlamaApp {
             state.timeout_idx = 1;
             self.box_layout = BoxLayout::Vertically;
         }
+        self.setupdone = true;
+        debug!(self);
     }
 
     fn setup_model(&mut self, storage: &dyn Storage) {
-        if STATE.read().selected_model > STATE.read().models.len() {
-            let selected_model = storage
-                .get_string("selected-model")
-                .unwrap_or("0".to_string());
-            let idx: usize = selected_model.parse().unwrap_or(0);
-            if idx < STATE.read().models.len() {
-                STATE.write().selected_model = idx;
-            } else {
-                STATE.write().selected_model = 0;
-            }
+        let selected_model = storage
+            .get_string("selected-model")
+            .unwrap_or("0".to_string());
+        let idx: usize = selected_model.parse().unwrap_or(0);
+        if idx < STATE.read().models.len() {
+            STATE.write().selected_model = idx;
+        } else {
+            STATE.write().selected_model = 0;
         }
     }
 
     fn setup_timeout(&mut self, storage: &dyn Storage) {
-        if STATE.read().timeout_idx > TIMEOUTS.len() {
-            let timeout: usize = storage
-                .get_string("timeout")
-                .unwrap_or("20".to_string())
-                .parse()
-                .unwrap_or(20);
-            for (idx, tm) in TIMEOUTS.iter().enumerate() {
-                if *tm == timeout {
-                    STATE.write().timeout_idx = idx;
-                    return;
-                }
+        let timeout: usize = storage
+            .get_string("timeout")
+            .unwrap_or("20".to_string())
+            .parse()
+            .unwrap_or(20);
+        for (idx, tm) in TIMEOUTS.iter().enumerate() {
+            if *tm == timeout {
+                STATE.write().timeout_idx = idx;
+                return;
             }
-            STATE.write().timeout_idx = 1;
         }
+        STATE.write().timeout_idx = 1;
     }
 
     fn setup_layout(&mut self, storage: &dyn Storage) {
-        if self.box_layout == BoxLayout::NotSet {
-            if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
-                self.box_layout = BoxLayout::Horizontally;
-            } else {
-                self.box_layout = BoxLayout::Vertically;
-            }
+        if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
+            self.box_layout = BoxLayout::Horizontally;
+        } else {
+            self.box_layout = BoxLayout::Vertically;
         }
     }
 }
