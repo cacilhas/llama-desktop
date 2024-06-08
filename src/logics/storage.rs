@@ -27,8 +27,10 @@ struct Parser(String, Vec<u16>);
 
 pub async fn save_content(content: impl Into<String>) {
     let content = content.into();
+    let cwd = STATE.read().cwd.to_owned();
     if let Some(path) = FileDialog::new()
         .set_title("Llama Desktop Save Context")
+        .set_directory(cwd)
         .add_filter("Context", &["ctx"])
         .add_filter("HTML (not loadable)", &["html", "htm"])
         .set_file_name(Local::now().format("%Y-%m-%d-%H%M.ctx").to_string())
@@ -41,8 +43,16 @@ pub async fn save_content(content: impl Into<String>) {
             .filter(|&e| e == "ctx")
             .is_some()
         {
+            if let Some(parent) = path.parent().map(|e| e.to_str()).flatten() {
+                STATE.write().cwd = parent.to_owned();
+            }
+            STATE.write().reload = true;
             save_context(&content, path.as_path().to_str().unwrap()).await
         } else {
+            if let Some(parent) = path.parent().map(|e| e.to_str()).flatten() {
+                STATE.write().cwd = parent.to_owned();
+            }
+            STATE.write().reload = true;
             save_html(&content, path.as_path().to_str().unwrap()).await
         } {
             Err(err) => {
@@ -62,13 +72,18 @@ pub async fn load() {
 }
 
 async fn do_load() -> Result<()> {
+    let cwd = STATE.read().cwd.to_owned();
     if let Some(path) = FileDialog::new()
         .set_title("Llama Desktop Load Context")
+        .set_directory(cwd)
         .add_filter("Context", &["ctx"])
         .add_filter("Legacy", &["ldml"])
         .pick_file()
     {
         warn!("opening file: {:?}", &path);
+        if let Some(parent) = path.parent().map(|e| e.to_str()).flatten() {
+            STATE.write().cwd = parent.to_owned();
+        }
         let mut parser = Parser(get_content(path.clone())?, Vec::new());
         match path.extension().map(|s| s.to_str().unwrap()) {
             Some("ctx") => parser.load().await?,
@@ -145,7 +160,7 @@ impl Parser {
         STATE.write().retrieving = true;
         let mut step = ReadingHTML;
         let mut question = String::new();
-        let content = self.0.clone();
+        let content = self.0.to_owned();
 
         for line in content.lines() {
             debug!(step, line);

@@ -105,7 +105,7 @@ impl App for super::LlamaApp {
                         .show_ui(ui, |ui| {
                             let mut selected = state.selected_model;
                             for (idx, opt) in state.models.iter().enumerate() {
-                                let value = ui.selectable_value(&mut selected, idx, opt.clone());
+                                let value = ui.selectable_value(&mut selected, idx, opt.to_owned());
                                 if value.clicked() {
                                     selected = idx;
                                 }
@@ -195,6 +195,7 @@ impl App for super::LlamaApp {
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
             let mut body: Option<Rect> = None;
+            let mut input: Option<Response> = None;
 
             match self.box_layout {
                 BoxLayout::Horizontally => {
@@ -206,13 +207,10 @@ impl App for super::LlamaApp {
                             .max_height(text_size.y)
                             .auto_shrink([false; 2])
                             .show(ui, |ui| {
-                                let input = ui.add_sized(
+                                let _ = input.insert(ui.add_sized(
                                     text_size,
                                     TextEdit::multiline(&mut STATE.write().input),
-                                );
-                                if STATE.read().reload {
-                                    input.request_focus();
-                                }
+                                ));
                             });
 
                         body = Some(ui.available_rect_before_wrap());
@@ -231,13 +229,10 @@ impl App for super::LlamaApp {
                         .max_height(text_size.y)
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
-                            let input = ui.add_sized(
+                            let _ = input.insert(ui.add_sized(
                                 text_size,
                                 TextEdit::multiline(&mut STATE.write().input),
-                            );
-                            if STATE.read().reload {
-                                input.request_focus();
-                            }
+                            ));
                         });
 
                     body = Some(ui.available_rect_before_wrap());
@@ -273,6 +268,13 @@ impl App for super::LlamaApp {
 
             if STATE.read().reload {
                 STATE.write().reload = false;
+                if let Some(storage) = frame.storage_mut() {
+                    storage.set_string("cwd", STATE.read().cwd.to_owned());
+                    storage.flush();
+                }
+                if let Some(input) = input {
+                    input.request_focus();
+                }
             }
         });
 
