@@ -159,12 +159,31 @@ impl App for super::LlamaApp {
                     });
 
                     cols[5].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        ui.label("accurate");
+                        ui.label(if self.temperature < 0.7 {
+                            let perc = (0.7 - self.temperature) / 0.7;
+                            let r = (perc * 138.0) as u8 + 117;
+                            let c = 117 - (perc * 117.0) as u8;
+                            RichText::new("accurate")
+                                .color(Color32::from_rgb(r, c, c))
+                                .strong()
+                        } else {
+                            RichText::new("accurate").color(Color32::from_rgb(117, 117, 117))
+                        });
+                        let text = if self.temperature > 1.0 {
+                            let perc = self.temperature - 1.0;
+                            let r = (perc * 138.0) as u8 + 117;
+                            let c = 117 - (perc * 117.0) as u8;
+                            RichText::new("creative")
+                                .color(Color32::from_rgb(r, c, c))
+                                .strong()
+                        } else {
+                            RichText::new("creative").color(Color32::from_rgb(117, 117, 117))
+                        };
                         ui.add(
                             Slider::new(&mut self.temperature, 0.0..=2.0)
                                 .show_value(false)
                                 .step_by(0.125)
-                                .text("creative"),
+                                .text(text),
                         );
                     });
 
