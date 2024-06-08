@@ -14,6 +14,7 @@ pub struct LlamaApp {
     box_layout: BoxLayout,
     setupdone: bool,
     temperature: f32,
+    last_temperature: f32,
 }
 
 #[derive(Debug, Default, Eq, PartialEq)]

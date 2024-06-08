@@ -295,6 +295,14 @@ impl App for super::LlamaApp {
                 Spinner::new().paint_at(ui, Rect::from_min_max(min, max));
             }
 
+            if self.temperature != self.last_temperature {
+                if let Some(storage) = frame.storage_mut() {
+                    storage.set_string("temperature", format!("{}", self.temperature));
+                    storage.flush();
+                }
+                self.last_temperature = self.temperature;
+            }
+
             if STATE.read().reload {
                 STATE.write().reload = false;
                 if let Some(storage) = frame.storage_mut() {
