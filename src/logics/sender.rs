@@ -4,7 +4,7 @@ use super::state::STATE;
 use super::timeouts::TIMEOUTS;
 use crate::helpers::{format_input_to_output, HR};
 use crate::ollama;
-use crate::protocol::{Request, Response};
+use crate::protocol::{AditionalParams, Request, Response};
 use eyre::{eyre, Result};
 use reqwest::header;
 use tokio::time;
@@ -69,6 +69,7 @@ impl Sender {
                 model: state.models[state.selected_model].to_owned(),
                 prompt: input,
                 stream: true,
+                options: AditionalParams::default(),
                 context: if context.is_empty() {
                     None
                 } else {
