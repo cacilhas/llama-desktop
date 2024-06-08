@@ -26,27 +26,11 @@ impl App for super::LlamaApp {
             .show(ctx, |ui| {
                 ui.columns(3, |cols| {
                     cols[0].with_layout(Layout::left_to_right(Align::Center), |ui| {
-                        ui.menu_button("Actions", |ui| {
-                            ui.horizontal(|ui| {
-                                Image::new(self.logo.clone())
-                                    .fit_to_exact_size(Vec2 { x: 24.0, y: 24.0 })
-                                    .ui(ui);
-                                ui.label(RichText::new("Llama Desktop").strong());
-                                ui.add_space(100.0);
-                            });
-                            ui.separator();
-
+                        ui.menu_button("File", |ui| {
                             if retrieving {
-                                let _ = ui.label(RichText::new("New Context").weak());
                                 let _ = ui.label(RichText::new("Load").weak());
                                 let _ = ui.label(RichText::new("Save").weak());
-                                let _ = ui.label(RichText::new("Send").weak());
                             } else {
-                                new_clicked = Button::new(RichText::new("New Context").strong())
-                                    .shortcut_text(&format!("{}N", CMD))
-                                    .ui(ui)
-                                    .clicked();
-
                                 load_clicked = Button::new(RichText::new("Load").strong())
                                     .shortcut_text(&format!("{}O", CMD))
                                     .ui(ui)
@@ -60,11 +44,6 @@ impl App for super::LlamaApp {
                                         .ui(ui)
                                         .clicked();
                                 }
-
-                                send_clicked = Button::new(RichText::new("Send").strong())
-                                    .shortcut_text(&format!("{}Enter", CMD))
-                                    .ui(ui)
-                                    .clicked();
                             }
 
                             ui.separator();
@@ -73,6 +52,22 @@ impl App for super::LlamaApp {
                                 .shortcut_text(&format!("{}Q", CMD))
                                 .ui(ui)
                                 .clicked();
+                        });
+                        ui.menu_button("Actions", |ui| {
+                            if retrieving {
+                                let _ = ui.label(RichText::new("New").weak());
+                                let _ = ui.label(RichText::new("Send").weak());
+                            } else {
+                                new_clicked = Button::new(RichText::new("New").strong())
+                                    .shortcut_text(&format!("{}N", CMD))
+                                    .ui(ui)
+                                    .clicked();
+
+                                send_clicked = Button::new(RichText::new("Send").strong())
+                                    .shortcut_text(&format!("{}Enter", CMD))
+                                    .ui(ui)
+                                    .clicked();
+                            }
                         });
                     });
 
@@ -110,7 +105,7 @@ impl App for super::LlamaApp {
                         .show_ui(ui, |ui| {
                             let mut selected = state.selected_model;
                             for (idx, opt) in state.models.iter().enumerate() {
-                                let value = ui.selectable_value(&mut selected, idx, opt.clone());
+                                let value = ui.selectable_value(&mut selected, idx, opt.to_owned());
                                 if value.clicked() {
                                     selected = idx;
                                 }
@@ -200,6 +195,7 @@ impl App for super::LlamaApp {
         CentralPanel::default().show(ctx, |ui| {
             let size = ui.available_size();
             let mut body: Option<Rect> = None;
+            let mut input: Option<Response> = None;
 
             match self.box_layout {
                 BoxLayout::Horizontally => {
@@ -211,13 +207,10 @@ impl App for super::LlamaApp {
                             .max_height(text_size.y)
                             .auto_shrink([false; 2])
                             .show(ui, |ui| {
-                                let input = ui.add_sized(
+                                let _ = input.insert(ui.add_sized(
                                     text_size,
                                     TextEdit::multiline(&mut STATE.write().input),
-                                );
-                                if STATE.read().reload {
-                                    input.request_focus();
-                                }
+                                ));
                             });
 
                         body = Some(ui.available_rect_before_wrap());
@@ -236,13 +229,10 @@ impl App for super::LlamaApp {
                         .max_height(text_size.y)
                         .auto_shrink([false; 2])
                         .show(ui, |ui| {
-                            let input = ui.add_sized(
+                            let _ = input.insert(ui.add_sized(
                                 text_size,
                                 TextEdit::multiline(&mut STATE.write().input),
-                            );
-                            if STATE.read().reload {
-                                input.request_focus();
-                            }
+                            ));
                         });
 
                     body = Some(ui.available_rect_before_wrap());
@@ -278,6 +268,13 @@ impl App for super::LlamaApp {
 
             if STATE.read().reload {
                 STATE.write().reload = false;
+                if let Some(storage) = frame.storage_mut() {
+                    storage.set_string("cwd", STATE.read().cwd.to_owned());
+                    storage.flush();
+                }
+                if let Some(input) = input {
+                    input.request_focus();
+                }
             }
         });
 
