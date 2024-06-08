@@ -18,6 +18,7 @@ pub struct AditionalParams {
     pub num_ctx: usize,
     pub repeat_last_n: i32,
     pub seed: u32,
+    pub temperature: f32,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -42,6 +43,7 @@ impl Default for AditionalParams {
             num_ctx: 8192,
             repeat_last_n: -1,
             seed: get_seed(),
+            temperature: 0.75,
         }
     }
 }

@@ -158,6 +158,16 @@ impl App for super::LlamaApp {
                         }
                     });
 
+                    cols[5].with_layout(Layout::left_to_right(Align::Center), |ui| {
+                        ui.label("accurate");
+                        ui.add(
+                            Slider::new(&mut self.temperature, 0.0..=2.0)
+                                .show_value(false)
+                                .step_by(0.125)
+                                .text("creative"),
+                        );
+                    });
+
                     cols[14].with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ImageButton::new(
                             Image::new(self.vertical.clone())
@@ -296,7 +306,7 @@ impl App for super::LlamaApp {
                 RUNTIME.spawn(storage::save_content(STATE.read().output.to_owned()));
             }
             if send_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::Enter)) {
-                RUNTIME.spawn(Sender::default().send());
+                RUNTIME.spawn(Sender::new(self.temperature).send());
             }
         }
 

@@ -9,8 +9,8 @@ use eyre::{eyre, Result};
 use reqwest::header;
 use tokio::time;
 
-#[derive(Debug, Default)]
-pub struct Sender;
+#[derive(Debug)]
+pub struct Sender(f32);
 
 impl Drop for Sender {
     fn drop(&mut self) {
@@ -24,6 +24,10 @@ impl Drop for Sender {
 }
 
 impl Sender {
+    pub fn new(temperature: f32) -> Self {
+        Self(temperature)
+    }
+
     pub async fn send(self) {
         STATE.write().retrieving = true;
 
@@ -63,7 +67,7 @@ impl Sender {
         let client = reqwest::Client::builder()
             .default_headers(headers)
             .build()?;
-        let payload = {
+        let mut payload = {
             let state = STATE.read();
             Request {
                 model: state.models[state.selected_model].to_owned(),
@@ -77,6 +81,7 @@ impl Sender {
                 },
             }
         };
+        payload.options.temperature = self.0;
         debug!(&payload);
         let payload = serde_json::to_string(&payload)?;
         let uri = ollama::path("/api/generate");

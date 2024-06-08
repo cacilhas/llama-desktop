@@ -39,6 +39,7 @@ impl LlamaApp {
             title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
             small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
             box_layout: BoxLayout::default(),
+            temperature: 0.75,
             setupdone: false,
         }
     }
