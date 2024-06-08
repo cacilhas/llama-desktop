@@ -52,10 +52,12 @@ impl LlamaApp {
             self.setup_model(storage);
             self.setup_timeout(storage);
             self.setup_layout(storage);
+            self.setup_cwd(storage);
         } else {
             let mut state = STATE.write();
             state.selected_model = 0;
             state.timeout_idx = 1;
+            state.cwd = env!["HOME"].to_string();
             self.box_layout = BoxLayout::Vertically;
         }
         self.setupdone = true;
@@ -95,5 +97,11 @@ impl LlamaApp {
         } else {
             self.box_layout = BoxLayout::Vertically;
         }
+    }
+
+    fn setup_cwd(&mut self, storage: &dyn Storage) {
+        STATE.write().cwd = storage
+            .get_string("cwd")
+            .unwrap_or(env!["HOME"].to_string());
     }
 }

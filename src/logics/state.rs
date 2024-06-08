@@ -10,6 +10,7 @@ pub struct State {
     pub timeout_idx: usize,
     pub escape: bool,
     pub context: Vec<u16>,
+    pub cwd: String,
 }
 
 impl State {
@@ -53,4 +54,5 @@ pub static mut STATE: State = State {
     escape: false,
     timeout_idx: usize::max_value(),
     context: Vec::new(),
+    cwd: String::new(),
 };
