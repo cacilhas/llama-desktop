@@ -7,7 +7,7 @@ use crate::{
 };
 use chrono::Local;
 use comrak::{markdown_to_html, Options};
-use eyre::{OptionExt, Result};
+use eyre::{eyre, OptionExt, Result};
 use reqwest::header;
 use rfd::FileDialog;
 use tokio::time;
@@ -26,56 +26,30 @@ use Step::*;
 struct Parser(String, Vec<u16>);
 
 pub async fn save_content(content: impl Into<String>) {
-    use std::io::Write;
-
-    let now = Local::now();
     let content = content.into();
     if let Some(path) = FileDialog::new()
-        .add_filter("Llama Desktop file", &["html", "ldml"])
-        .set_file_name(now.format("%Y-%m-%d-%H%M.ldml").to_string())
+        .set_title("Llama Desktop Save Context")
+        .add_filter("Context", &["ctx"])
+        .add_filter("HTML (not loadable)", &["html", "htm"])
+        .set_file_name(Local::now().format("%Y-%m-%d-%H%M.ctx").to_string())
         .save_file()
     {
-        let model = {
-            let state = STATE.read();
-            state.models[state.selected_model].to_owned()
-        };
-        warn!("caching data");
-        debug!(&model);
-        let mut html = String::new();
-        html.push_str("<!DOCTYPE html>\n");
-        html.push_str("<html>\n");
-        html.push_str("  <head>\n");
-        html.push_str("    <title>");
-        html.push_str(&STATE.read().title);
-        html.push_str("</title>\n");
-        html.push_str("  </head>\n");
-        html.push_str("  <body>\n");
-        html.push_str(&markdown_to_html(&content, &Options::default()));
-        html.push_str("  </body>\n");
-        html.push_str("\n<!--\n");
-        html.push_str("---\n");
-        html.push_str("filetype: llama markup\n");
-        html.push_str("model: ");
-        html.push_str(&model);
-        html.push_str("\n---\n");
-        html.push_str(&content.replace("<", "&lt;").replace(">", "&gt;"));
-        html.push_str("&lt;!-- END OF DATA --&gt;\n");
-        html.push_str("\n-->\n");
-        html.push_str("</html>\n");
-        warn!("done caching");
-
-        match File::create(&path) {
-            Ok(mut file) => {
-                warn!("saving to {:?}", &path);
-                if let Err(err) = file.write_all(html.as_bytes()) {
-                    eprintln!("error writing {:?}", &path);
-                    eprintln!("{:?}", err);
-                }
-            }
+        match if path
+            .extension()
+            .map(|e| e.to_str())
+            .flatten()
+            .filter(|&e| e == "ctx")
+            .is_some()
+        {
+            save_context(&content, path.as_path().to_str().unwrap()).await
+        } else {
+            save_html(&content, path.as_path().to_str().unwrap()).await
+        } {
             Err(err) => {
-                eprintln!("error opening {:?} for writing", &path);
+                eprintln!("error saving to {:?}", &path);
                 eprintln!("{:?}", err);
             }
+            Ok(()) => (),
         }
     }
 }
@@ -88,12 +62,19 @@ pub async fn load() {
 }
 
 async fn do_load() -> Result<()> {
-    let path = FileDialog::new()
-        .add_filter("HTML", &["html", "ldml"])
+    if let Some(path) = FileDialog::new()
+        .set_title("Llama Desktop Load Context")
+        .add_filter("Context", &["ctx"])
+        .add_filter("Legacy", &["ldml"])
         .pick_file()
-        .ok_or_eyre("error opening file")?;
-    warn!("opening file: {:?}", &path);
-    Parser(get_content(path)?, Vec::new()).load().await?;
+    {
+        warn!("opening file: {:?}", &path);
+        let mut parser = Parser(get_content(path.clone())?, Vec::new());
+        match path.extension().map(|s| s.to_str().unwrap()) {
+            Some("ctx") => parser.load().await?,
+            _ => parser.load_legacy().await?,
+        }
+    }
     Ok(())
 }
 
@@ -108,7 +89,7 @@ fn get_content(path: PathBuf) -> Result<String> {
 
 impl Drop for Parser {
     fn drop(&mut self) {
-        warn!("FINISHED");
+        warn!("finished");
         let mut state = STATE.write();
         state.retrieving = false;
         state.escape = false;
@@ -122,14 +103,52 @@ impl Drop for Parser {
 
 impl Parser {
     async fn load(&mut self) -> Result<()> {
+        warn!("loading context");
+        STATE.write().retrieving = true;
+        let content = self.0.to_owned();
+        let mut step = ReadingHeader;
+        for line in content.lines() {
+            debug!(step, line);
+
+            match step {
+                ReadingHeader => {
+                    if line.starts_with("model: ") {
+                        let model = &line[7..];
+                        if !set_model(model) {
+                            warn!("using current model");
+                        }
+                    } else if line.starts_with("context: ") {
+                        let context = &line[9..];
+                        self.1 = context
+                            .split(",")
+                            .map(|e| e.parse::<u16>().unwrap())
+                            .collect::<Vec<_>>();
+                    } else if line == "-----" {
+                        warn!("end of headers");
+                        step = ReadingQuestion;
+                    }
+                }
+
+                _ => {
+                    STATE.write().output.push_str(&line);
+                    STATE.write().output.push_str("\n");
+                }
+            }
+        }
+
+        warn!("context loaded");
+        Ok(())
+    }
+
+    async fn load_legacy(&mut self) -> Result<()> {
+        warn!("loading legacy file");
         STATE.write().retrieving = true;
         let mut step = ReadingHTML;
         let mut question = String::new();
         let content = self.0.clone();
 
         for line in content.lines() {
-            debug!(step);
-            debug!(line);
+            debug!(step, line);
             if line == "-->" || line == "</html>" {
                 warn!("IT SHOULD NEVER HAPPEN");
                 continue;
@@ -245,4 +264,52 @@ impl Parser {
 
         Ok(())
     }
+}
+
+pub async fn save_html(content: &str, path: &str) -> Result<()> {
+    use std::io::Write;
+
+    warn!("saving to HTML: {}", path);
+    let mut file = File::create(path)?;
+    file.write_all(b"<!DOCTYPE html>\n")?;
+    file.write_all(b"<html>\n")?;
+    file.write_all(b"  <head>\n")?;
+    file.write_all(b"    <title>")?;
+    file.write_all(STATE.read().title.as_bytes())?;
+    file.write_all(b"</title>\n")?;
+    file.write_all(b"  </head>\n")?;
+    file.write_all(b"  <body>\n")?;
+    file.write_all(markdown_to_html(&content, &Options::default()).as_bytes())?;
+    file.write_all(b"  </body>\n")?;
+    file.write_all(b"</html>\n")?;
+    warn!("saved to HTML");
+
+    Ok(())
+}
+
+pub async fn save_context(content: &str, path: &str) -> Result<()> {
+    use std::io::Write;
+
+    warn!("saving context to {}", path);
+    let model = {
+        let state = STATE.read();
+        state.models[state.selected_model].to_owned()
+    };
+    let context = STATE.read().context.to_owned();
+    if context.is_empty() {
+        return Err(eyre!("no context to save"));
+    }
+    let mut file = File::create(path)?;
+    file.write_all(b"model: ")?;
+    file.write_all(model.as_bytes())?;
+    file.write_all(b"\ncontext: ")?;
+    file.write_all(format!("{}", context[0]).as_bytes())?;
+    for part in context.to_owned().iter().skip(1) {
+        file.write_all(format!(",{}", part).as_bytes())?;
+    }
+    file.write_all(b"\n-----\n")?;
+    file.write_all(content.as_bytes())?;
+    warn!("context saved");
+
+    Ok(())
 }
