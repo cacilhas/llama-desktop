@@ -15,6 +15,8 @@ pub struct ModelList {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct AditionalParams {
+    pub num_ctx: usize,
+    pub repeat_last_n: i32,
     pub seed: u32,
 }
 
@@ -36,7 +38,11 @@ pub struct Response {
 
 impl Default for AditionalParams {
     fn default() -> Self {
-        Self { seed: get_seed() }
+        Self {
+            num_ctx: 8192,
+            repeat_last_n: -1,
+            seed: get_seed(),
+        }
     }
 }
 
