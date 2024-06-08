@@ -13,6 +13,8 @@ pub struct LlamaApp {
     small_font: FontId,
     box_layout: BoxLayout,
     setupdone: bool,
+    temperature: f32,
+    last_temperature: f32,
 }
 
 #[derive(Debug, Default, Eq, PartialEq)]

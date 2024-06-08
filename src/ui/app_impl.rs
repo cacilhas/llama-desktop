@@ -39,6 +39,8 @@ impl LlamaApp {
             title_font: FontId::new(32.0, FontFamily::Name("arial".into())),
             small_font: FontId::new(12.0, FontFamily::Name("arial".into())),
             box_layout: BoxLayout::default(),
+            temperature: 0.75,
+            last_temperature: 0.75,
             setupdone: false,
         }
     }
@@ -53,6 +55,7 @@ impl LlamaApp {
             self.setup_timeout(storage);
             self.setup_layout(storage);
             self.setup_cwd(storage);
+            self.setup_temperature(storage);
         } else {
             let mut state = STATE.write();
             state.selected_model = 0;
@@ -103,5 +106,14 @@ impl LlamaApp {
         STATE.write().cwd = storage
             .get_string("cwd")
             .unwrap_or(env!["HOME"].to_string());
+    }
+
+    fn setup_temperature(&mut self, storage: &dyn Storage) {
+        self.temperature = storage
+            .get_string("temperature")
+            .unwrap_or("0.75".to_string())
+            .parse()
+            .unwrap_or(0.75);
+        self.last_temperature = self.temperature;
     }
 }
