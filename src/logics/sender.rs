@@ -47,6 +47,11 @@ impl Sender {
 
         let input = STATE.read().input.to_owned();
         debug!(&input);
+
+        if input.is_empty() {
+            return Err(eyre!("empty question"));
+        }
+
         if STATE.read().title.is_empty() {
             STATE.write().title = input.to_owned();
         }
