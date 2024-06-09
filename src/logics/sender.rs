@@ -61,6 +61,10 @@ impl Sender {
             .output
             .push_str(&format_input_to_output(input.clone()));
         STATE.write().output.push_str("\n\n");
+        if STATE.read().output.is_empty() {
+            // XXX: WORKAROUND! It should never happen!
+            return Err(eyre!("couldn't access output frame"));
+        }
         STATE.write().input.clear();
 
         let mut headers = header::HeaderMap::new();
