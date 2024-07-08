@@ -4,7 +4,7 @@ use super::state::STATE;
 use super::timeouts::TIMEOUTS;
 use crate::helpers::{format_input_to_output, HR};
 use crate::ollama;
-use crate::protocol::{AditionalParams, Request, Response};
+use crate::protocol::{AdditionalParams, Request, Response};
 use eyre::{eyre, Result};
 use reqwest::header;
 use tokio::time;
@@ -47,6 +47,11 @@ impl Sender {
 
         let input = STATE.read().input.to_owned();
         debug!(&input);
+
+        if input.is_empty() {
+            return Err(eyre!("empty question"));
+        }
+
         if STATE.read().title.is_empty() {
             STATE.write().title = input.to_owned();
         }
@@ -56,6 +61,10 @@ impl Sender {
             .output
             .push_str(&format_input_to_output(input.clone()));
         STATE.write().output.push_str("\n\n");
+        if STATE.read().output.is_empty() {
+            // XXX: WORKAROUND! It should never happen!
+            return Err(eyre!("couldn't access output frame"));
+        }
         STATE.write().input.clear();
 
         let mut headers = header::HeaderMap::new();
@@ -73,7 +82,7 @@ impl Sender {
                 model: state.models[state.selected_model].to_owned(),
                 prompt: input,
                 stream: true,
-                options: AditionalParams::default(),
+                options: AdditionalParams::default(),
                 context: if context.is_empty() {
                     None
                 } else {

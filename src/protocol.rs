@@ -14,7 +14,7 @@ pub struct ModelList {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct AditionalParams {
+pub struct AdditionalParams {
     pub num_ctx: usize,
     pub repeat_last_n: i32,
     pub seed: u32,
@@ -26,7 +26,7 @@ pub struct Request {
     pub model: String,
     pub prompt: String,
     pub stream: bool,
-    pub options: AditionalParams,
+    pub options: AdditionalParams,
     pub context: Option<Vec<u16>>,
 }
 
@@ -37,7 +37,7 @@ pub struct Response {
     pub done: bool,
 }
 
-impl Default for AditionalParams {
+impl Default for AdditionalParams {
     fn default() -> Self {
         Self {
             num_ctx: 8192,
