@@ -3,7 +3,7 @@ use std::{fs::File, path::PathBuf};
 use super::{set_model, STATE, TIMEOUTS};
 use crate::{
     ollama,
-    protocol::{AditionalParams, Request, Response},
+    protocol::{AdditionalParams, Request, Response},
 };
 use chrono::Local;
 use comrak::{markdown_to_html, Options};
@@ -259,7 +259,7 @@ impl Parser {
                 model: STATE.read().models[STATE.read().selected_model].to_owned(),
                 prompt: question,
                 stream: false,
-                options: AditionalParams::default(),
+                options: AdditionalParams::default(),
                 context: if self.1.is_empty() {
                     None
                 } else {
