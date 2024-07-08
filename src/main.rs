@@ -32,7 +32,7 @@ fn main() {
     eframe::run_native(
         "llama-desktop",
         options,
-        Box::new(|cc| Box::new(LlamaApp::new(cc, fonts))),
+        Box::new(|cc| Ok(Box::new(LlamaApp::new(cc, fonts)))),
     )
     .unwrap();
 }

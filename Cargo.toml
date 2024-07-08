@@ -1,6 +1,6 @@
 [package]
 name        = "llama-desktop"
-version     = "2.2.7"
+version     = "2.2.8"
 authors     = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
 license     = "MIT"
 readme      = "README.md"
@@ -27,11 +27,11 @@ toml = "0.8"
 url = "2.5"
 
 [dependencies.eframe]
-version= "0.27"
+version= "0.28"
 features = ["persistence"]
 
 [dependencies.egui_commonmark]
-version = "0.16"
+version = "0.17"
 features = ["better_syntax_highlighting"]
 
 [dependencies.image]
@@ -39,7 +39,7 @@ version = "0.25"
 features = ["png"]
 
 [dependencies.egui_extras]
-version = "0.27"
+version = "0.28"
 features = ["image"]
 
 [dependencies.reqwest]
