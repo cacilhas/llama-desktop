@@ -8,7 +8,7 @@ pub fn initialize_fonts() -> Result<FontDefinitions> {
     let sans = egui::FontData::from_static(include_bytes!("assets/bellota.ttf"));
     let mono = egui::FontData::from_static(include_bytes!("assets/noto-sans-mono.ttf"));
 
-    let mut fonts = egui::FontDefinitions::default();
+    let mut fonts = FontDefinitions::default();
     fonts.font_data.insert("arial".into(), arial);
     fonts.font_data.insert("sans".into(), sans);
     fonts.font_data.insert("monospace".into(), mono);

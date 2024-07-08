@@ -51,6 +51,6 @@ impl Default for AdditionalParams {
 fn get_seed() -> u32 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .map(|since| (since.as_millis() % u32::max_value() as u128) as u32)
+        .map(|since| (since.as_millis() % (u32::MAX as u128 + 1)) as u32)
         .unwrap_or(0)
 }

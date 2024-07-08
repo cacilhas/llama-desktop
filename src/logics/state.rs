@@ -15,7 +15,7 @@ pub struct State {
 
 impl State {
     pub fn reset(&mut self) {
-        warn!("RESETING STATE");
+        warn!("RESETTING STATE");
         self.input = "Why the sky is blue?".to_owned();
         self.title = String::new();
         self.output = String::new();
@@ -46,13 +46,13 @@ pub fn set_model(model: impl Into<String>) -> bool {
 pub static mut STATE: State = State {
     title: String::new(),
     models: Vec::new(),
-    selected_model: usize::max_value(),
+    selected_model: usize::MAX,
     input: "Why the sky is blue?".to_owned(),
     output: String::new(),
     retrieving: false,
     reload: true,
     escape: false,
-    timeout_idx: usize::max_value(),
+    timeout_idx: usize::MAX,
     context: Vec::new(),
     cwd: String::new(),
 };
