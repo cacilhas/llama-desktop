@@ -340,6 +340,8 @@ impl App for super::LlamaApp {
         if quit_clicked || ctx.input(|rd| rd.modifiers.command && rd.key_pressed(Key::Q)) {
             ctx.send_viewport_cmd(ViewportCommand::Close);
         }
+
+        ::std::thread::sleep(::std::time::Duration::from_millis(10));
     }
 }
 
