@@ -27,13 +27,13 @@ pub struct Request {
     pub prompt: String,
     pub stream: bool,
     pub options: AdditionalParams,
-    pub context: Option<Vec<u16>>,
+    pub context: Option<Vec<u32>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Response {
     pub response: String,
-    pub context: Option<Vec<u16>>,
+    pub context: Option<Vec<u32>>,
     pub done: bool,
 }
 

@@ -109,7 +109,9 @@ impl Sender {
         'read: while let Some(current) = time::timeout(timeout, response.chunk()).await?? {
             debug!(&current);
             self.check_escape()?;
-            let chunk: Response = serde_json::from_str(std::str::from_utf8(current.borrow())?)?;
+            let chunk: Response = serde_json::from_str(
+                std::str::from_utf8(current.borrow())?
+            )?;
             let mut state = STATE.write();
             state.output.push_str(&chunk.response);
             if let Some(context) = chunk.context {

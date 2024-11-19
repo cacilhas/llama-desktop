@@ -9,7 +9,7 @@ pub struct State {
     pub reload: bool,
     pub timeout_idx: usize,
     pub escape: bool,
-    pub context: Vec<u16>,
+    pub context: Vec<u32>,
     pub cwd: String,
 }
 

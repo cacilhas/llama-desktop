@@ -1,19 +1,19 @@
 [package]
-name        = "llama-desktop"
-version     = "2.2.8"
-authors     = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
-license     = "MIT"
-readme      = "README.md"
-homepage    = "https://crates.io/crates/llama-desktop"
-repository  = "https://github.com/cacilhas/llama-desktop"
-keywords    = ["desktop", "ai"]
+name = "llama-desktop"
+version = "2.2.9"
+authors = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://crates.io/crates/llama-desktop"
+repository = "https://github.com/cacilhas/llama-desktop"
+keywords = ["desktop", "ai"]
 description = "Desktop interface for Ollama"
-edition     = "2021"
+edition = "2021"
 
 [profile.release]
 opt-level = "s"
 panic = "abort"
-lto   = true
+lto = true
 debug = false
 rpath = false
 strip = true
@@ -29,7 +29,7 @@ toml = "0.8"
 url = "2.5"
 
 [dependencies.eframe]
-version= "0.28"
+version = "0.28"
 features = ["persistence"]
 
 [dependencies.egui_commonmark]

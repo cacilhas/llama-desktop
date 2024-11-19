@@ -23,7 +23,7 @@ enum Step {
 use Step::*;
 
 #[derive(Debug, Default)]
-struct Parser(String, Vec<u16>);
+struct Parser(String, Vec<u32>);
 
 pub async fn save_content(content: impl Into<String>) {
     let content = content.into();
@@ -136,7 +136,7 @@ impl Parser {
                         let context = &line[9..];
                         self.1 = context
                             .split(",")
-                            .map(|e| e.parse::<u16>().unwrap())
+                            .map(|e| e.parse::<u32>().unwrap())
                             .collect::<Vec<_>>();
                     } else if line == "-----" {
                         warn!("end of headers");
