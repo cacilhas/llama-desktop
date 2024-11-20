@@ -14,8 +14,9 @@ mod ui;
 use crate::fonts::initialize_fonts;
 use crate::ui::LlamaApp;
 use eframe::egui;
+use eyre::{eyre, Result};
 
-fn main() {
+fn main() -> Result<()> {
     let viewport = egui::ViewportBuilder::default()
         .with_title("Llama Desktop")
         .with_inner_size([800.0, 1200.0])
@@ -32,7 +33,10 @@ fn main() {
     eframe::run_native(
         "llama-desktop",
         options,
-        Box::new(|cc| Ok(Box::new(LlamaApp::new(cc, fonts)))),
-    )
-    .unwrap();
+        Box::new(|cc|
+            Ok(Box::new(LlamaApp::new(cc, fonts)))
+        ),
+    ).map_err(|err| eyre!("{:?}", err))?;
+
+    Ok(())
 }
