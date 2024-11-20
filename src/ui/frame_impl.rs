@@ -32,7 +32,7 @@ impl App for super::LlamaApp {
                                 let _ = ui.label(RichText::new("Save").weak());
                             } else {
                                 load_clicked = Button::new(RichText::new("Load").strong())
-                                    .shortcut_text(&format!("{}O", CMD))
+                                    .shortcut_text(format!("{}O", CMD))
                                     .ui(ui)
                                     .clicked();
 
@@ -40,7 +40,7 @@ impl App for super::LlamaApp {
                                     let _ = ui.label(RichText::new("Save").weak());
                                 } else {
                                     save_clicked = Button::new(RichText::new("Save").strong())
-                                        .shortcut_text(&format!("{}S", CMD))
+                                        .shortcut_text(format!("{}S", CMD))
                                         .ui(ui)
                                         .clicked();
                                 }
@@ -49,7 +49,7 @@ impl App for super::LlamaApp {
                             ui.separator();
 
                             quit_clicked = Button::new(RichText::new("Quit").strong())
-                                .shortcut_text(&format!("{}Q", CMD))
+                                .shortcut_text(format!("{}Q", CMD))
                                 .ui(ui)
                                 .clicked();
                         });
@@ -59,12 +59,12 @@ impl App for super::LlamaApp {
                                 let _ = ui.label(RichText::new("Send").weak());
                             } else {
                                 new_clicked = Button::new(RichText::new("New").strong())
-                                    .shortcut_text(&format!("{}N", CMD))
+                                    .shortcut_text(format!("{}N", CMD))
                                     .ui(ui)
                                     .clicked();
 
                                 send_clicked = Button::new(RichText::new("Send").strong())
-                                    .shortcut_text(&format!("{}Enter", CMD))
+                                    .shortcut_text(format!("{}Enter", CMD))
                                     .ui(ui)
                                     .clicked();
                             }
@@ -86,7 +86,7 @@ impl App for super::LlamaApp {
                                 );
 
                                 ui.label(
-                                    RichText::new(&format!("v{}", VERSION.to_string()))
+                                    RichText::new(format!("v{}", VERSION.to_string()))
                                         .font(self.small_font.clone()),
                                 );
                             });

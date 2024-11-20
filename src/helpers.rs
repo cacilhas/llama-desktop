@@ -7,8 +7,8 @@ pub fn format_input_to_output(inp: impl Into<String>) -> String {
             out.push_str("> ");
         }
     }
-    out.push_str("\n");
+    out.push('\n');
     out
 }
 
-pub const HR: &'static str = "\n\n-----\n";
+pub const HR: &str = "\n\n-----\n";

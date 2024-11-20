@@ -16,7 +16,7 @@ impl Drop for Sender {
     fn drop(&mut self) {
         warn!("FINISHED");
         let mut state = STATE.write();
-        state.output.push_str(&HR);
+        state.output.push_str(HR);
         state.retrieving = false;
         state.escape = false;
         state.reload = true;

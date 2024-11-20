@@ -4,7 +4,7 @@ use crate::protocol::ModelList;
 use std::{env, fmt::Debug, panic, process};
 use url::Url;
 
-const DEFAULT_HOST: &'static str = "http://localhost:11434";
+const DEFAULT_HOST: &str = "http://localhost:11434";
 
 #[dynamic]
 static HOST: String = get_ollama_host();

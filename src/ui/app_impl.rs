@@ -95,7 +95,7 @@ impl LlamaApp {
     }
 
     fn setup_layout(&mut self, storage: &dyn Storage) {
-        if storage.get_string("layout").unwrap_or("V".to_string()) == "H".to_string() {
+        if storage.get_string("layout").unwrap_or("V".to_string()) == *"H" {
             self.box_layout = BoxLayout::Horizontally;
         } else {
             self.box_layout = BoxLayout::Vertically;

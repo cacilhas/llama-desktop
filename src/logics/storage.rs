@@ -36,30 +36,28 @@ pub async fn save_content(content: impl Into<String>) {
         .set_file_name(Local::now().format("%Y-%m-%d-%H%M.ctx").to_string())
         .save_file()
     {
-        match if path
+        if let Err(err) = {
+            if path
             .extension()
-            .map(|e| e.to_str())
-            .flatten()
+            .and_then(|e| e.to_str())
             .filter(|&e| e == "ctx")
             .is_some()
-        {
-            if let Some(parent) = path.parent().map(|e| e.to_str()).flatten() {
-                STATE.write().cwd = parent.to_owned();
+            {
+                if let Some(parent) = path.parent().and_then(|e| e.to_str()) {
+                    STATE.write().cwd = parent.to_owned();
+                }
+                STATE.write().reload = true;
+                save_context(&content, path.as_path().to_str().unwrap()).await
+            } else {
+                if let Some(parent) = path.parent().and_then(|e| e.to_str()) {
+                    STATE.write().cwd = parent.to_owned();
+                }
+                STATE.write().reload = true;
+                save_html(&content, path.as_path().to_str().unwrap()).await
             }
-            STATE.write().reload = true;
-            save_context(&content, path.as_path().to_str().unwrap()).await
-        } else {
-            if let Some(parent) = path.parent().map(|e| e.to_str()).flatten() {
-                STATE.write().cwd = parent.to_owned();
-            }
-            STATE.write().reload = true;
-            save_html(&content, path.as_path().to_str().unwrap()).await
         } {
-            Err(err) => {
-                eprintln!("error saving to {:?}", &path);
-                eprintln!("{:?}", err);
-            }
-            Ok(()) => (),
+            eprintln!("error saving to {:?}", &path);
+            eprintln!("{:?}", err);
         }
     }
 }
@@ -81,7 +79,7 @@ async fn do_load() -> Result<()> {
         .pick_file()
     {
         warn!("opening file: {:?}", &path);
-        if let Some(parent) = path.parent().map(|e| e.to_str()).flatten() {
+        if let Some(parent) = path.parent().and_then(|e| e.to_str()) {
             STATE.write().cwd = parent.to_owned();
         }
         let mut parser = Parser(get_content(path.clone())?, Vec::new());
@@ -127,13 +125,11 @@ impl Parser {
 
             match step {
                 ReadingHeader => {
-                    if line.starts_with("model: ") {
-                        let model = &line[7..];
+                    if let Some(model) = line.strip_prefix("model: ") {
                         if !set_model(model) {
                             warn!("using current model");
                         }
-                    } else if line.starts_with("context: ") {
-                        let context = &line[9..];
+                    } else if let Some(context) =  line.strip_prefix("context: ") {
                         self.1 = context
                             .split(",")
                             .map(|e| e.parse::<u32>().unwrap())
@@ -145,8 +141,8 @@ impl Parser {
                 }
 
                 _ => {
-                    STATE.write().output.push_str(&line);
-                    STATE.write().output.push_str("\n");
+                    STATE.write().output.push_str(line);
+                    STATE.write().output.push('\n');
                 }
             }
         }
@@ -180,8 +176,7 @@ impl Parser {
                 }
 
                 ReadingHeader => {
-                    if line.starts_with("model: ") {
-                        let model = &line[7..];
+                    if let Some(model) = line.strip_prefix("model: ") {
                         if !set_model(model) {
                             warn!("using current model");
                         }
@@ -200,10 +195,10 @@ impl Parser {
                     }
 
                     STATE.write().output.push_str(&line);
-                    STATE.write().output.push_str("\n");
+                    STATE.write().output.push('\n');
 
-                    if line.starts_with("> ") {
-                        question.push_str(&line[2..]);
+                    if let Some(line) =  line.strip_prefix("> ") {
+                        question.push_str(line);
                     } else {
                         warn!("end of question");
                         step = ReadingAnswer;
@@ -222,11 +217,11 @@ impl Parser {
                     }
 
                     STATE.write().output.push_str(&line);
-                    STATE.write().output.push_str("\n");
+                    STATE.write().output.push('\n');
 
-                    if line.starts_with("> ") {
+                    if let Some(line) = line.strip_prefix("> ") {
                         warn!("new question");
-                        question.push_str(&line[2..]);
+                        question.push_str(line);
                         step = ReadingQuestion;
                         continue;
                     }
@@ -295,7 +290,7 @@ pub async fn save_html(content: &str, path: &str) -> Result<()> {
     file.write_all(b"</title>\n")?;
     file.write_all(b"  </head>\n")?;
     file.write_all(b"  <body>\n")?;
-    file.write_all(markdown_to_html(&content, &Options::default()).as_bytes())?;
+    file.write_all(markdown_to_html(content, &Options::default()).as_bytes())?;
     file.write_all(b"  </body>\n")?;
     file.write_all(b"</html>\n")?;
     warn!("saved to HTML");

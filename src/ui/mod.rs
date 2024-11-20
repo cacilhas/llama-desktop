@@ -18,7 +18,7 @@ pub struct LlamaApp {
 }
 
 #[derive(Debug, Default, Eq, PartialEq)]
-pub(self) enum BoxLayout {
+enum BoxLayout {
     Horizontally,
     Vertically,
     #[default]

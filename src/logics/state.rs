@@ -39,7 +39,7 @@ pub fn set_model(model: impl Into<String>) -> bool {
         }
     }
     warn!("model {} not found", &model);
-    return false;
+    false
 }
 
 #[dynamic]
