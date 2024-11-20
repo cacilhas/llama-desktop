@@ -1,7 +1,7 @@
 // TODO: move this mod into logics
 
 use crate::protocol::ModelList;
-use std::{env, fmt::Debug, panic, process};
+use std::{env, panic, process::exit};
 use url::Url;
 
 const DEFAULT_HOST: &str = "http://localhost:11434";
@@ -17,7 +17,9 @@ pub fn path(path: &str) -> String {
 #[must_use]
 pub async fn get_models() -> Vec<String> {
     let uri = path("/api/tags");
-    let mut models = panic(panic(reqwest::get(uri).await).json::<ModelList>().await).models;
+    let mut models = reqwest::get(uri).await.unwrap()
+        .json::<ModelList>().await.unwrap()
+        .models;
     models.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     let models = models
         .iter()
@@ -37,21 +39,18 @@ fn get_ollama_host() -> String {
         Err(err) => {
             eprintln!(
                 "error parsing \x1b[33m{}\x1b[0m: \x1b[31;1m{:?}\x1b[0m",
-                uri, err
+                uri, err,
             );
             eprintln!("fallback to \x1b[33;1m{}\x1b[0m", DEFAULT_HOST);
             eprintln!(
-                "please review the content of environment variable \x1b[32mOLLAMA_HOST\x1b[0m"
+                "please review the content of environment variable \x1b[32mOLLAMA_HOST\x1b[0m",
             );
-            panic(Url::parse(DEFAULT_HOST))
+            exit(1);
         }
     };
-    let host = match uri.host_str() {
-        Some(host) => host,
-        None => {
-            eprintln!("fail to parse {}", uri);
-            panic!("parsing error");
-        }
+    let Some(host) = uri.host_str() else {
+        eprintln!("fail to parse {}", uri);
+        exit(1);
     };
     format!(
         "{}://{}:{}",
@@ -59,20 +58,4 @@ fn get_ollama_host() -> String {
         host,
         uri.port().unwrap_or(11434),
     )
-}
-
-fn panic<T, E>(value: Result<T, E>) -> T
-where
-    E: Debug,
-{
-    match value {
-        Ok(value) => value,
-        Err(err) => {
-            eprintln!(
-                "\x1b[31;1m[PANIC] couldn't initialise:\x1b[0m \x1b[1m{:?}\x1b[0m",
-                err
-            );
-            process::exit(1);
-        }
-    }
 }

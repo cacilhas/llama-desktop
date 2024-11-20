@@ -1,7 +1,6 @@
-pub fn format_input_to_output(inp: impl Into<String>) -> String {
-    let inp: String = inp.into();
+pub fn format_input_to_output(inp: impl ToString) -> String {
     let mut out = "> ".to_string();
-    for c in inp.chars() {
+    for c in inp.to_string().chars() {
         out.push(c);
         if c == '\n' {
             out.push_str("> ");

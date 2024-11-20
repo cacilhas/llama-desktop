@@ -48,6 +48,7 @@ impl Default for AdditionalParams {
     }
 }
 
+#[inline]
 fn get_seed() -> u32 {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)

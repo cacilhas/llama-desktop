@@ -1,23 +1,15 @@
 use std::{fs::File, path::PathBuf};
 
-use super::{set_model, STATE, TIMEOUTS};
-use crate::{
-    ollama,
-    protocol::{AdditionalParams, Request, Response},
-};
+use super::{set_model, STATE };
 use chrono::Local;
 use comrak::{markdown_to_html, Options};
-use eyre::{eyre, OptionExt, Result};
-use reqwest::header;
+use eyre::{eyre, Result};
 use rfd::FileDialog;
-use tokio::time;
 
 #[derive(Clone, Copy, Debug)]
 enum Step {
-    ReadingHTML,
     ReadingHeader,
     ReadingQuestion,
-    ReadingAnswer,
 }
 
 use Step::*;
@@ -25,23 +17,23 @@ use Step::*;
 #[derive(Debug, Default)]
 struct Parser(String, Vec<u32>);
 
-pub async fn save_content(content: impl Into<String>) {
-    let content = content.into();
+pub async fn save_content(content: impl ToString) {
+    let content = content.to_string();
     let cwd = STATE.read().cwd.to_owned();
     if let Some(path) = FileDialog::new()
         .set_title("Llama Desktop Save Context")
         .set_directory(cwd)
         .add_filter("Context", &["ctx"])
-        .add_filter("HTML (not loadable)", &["html", "htm"])
+        .add_filter("HTML (not reloadable)", &["html", "htm"])
         .set_file_name(Local::now().format("%Y-%m-%d-%H%M.ctx").to_string())
         .save_file()
     {
         if let Err(err) = {
             if path
-            .extension()
-            .and_then(|e| e.to_str())
-            .filter(|&e| e == "ctx")
-            .is_some()
+                .extension()
+                .and_then(|e| e.to_str())
+                .filter(|&e| e == "ctx")
+                .is_some()
             {
                 if let Some(parent) = path.parent().and_then(|e| e.to_str()) {
                     STATE.write().cwd = parent.to_owned();
@@ -75,7 +67,6 @@ async fn do_load() -> Result<()> {
         .set_title("Llama Desktop Load Context")
         .set_directory(cwd)
         .add_filter("Context", &["ctx"])
-        .add_filter("Legacy", &["ldml"])
         .pick_file()
     {
         warn!("opening file: {:?}", &path);
@@ -83,10 +74,7 @@ async fn do_load() -> Result<()> {
             STATE.write().cwd = parent.to_owned();
         }
         let mut parser = Parser(get_content(path.clone())?, Vec::new());
-        match path.extension().map(|s| s.to_str().unwrap()) {
-            Some("ctx") => parser.load().await?,
-            _ => parser.load_legacy().await?,
-        }
+        parser.load().await?;
     }
     Ok(())
 }
@@ -129,7 +117,7 @@ impl Parser {
                         if !set_model(model) {
                             warn!("using current model");
                         }
-                    } else if let Some(context) =  line.strip_prefix("context: ") {
+                    } else if let Some(context) = line.strip_prefix("context: ") {
                         self.1 = context
                             .split(",")
                             .map(|e| e.parse::<u32>().unwrap())
@@ -150,134 +138,9 @@ impl Parser {
         warn!("context loaded");
         Ok(())
     }
-
-    async fn load_legacy(&mut self) -> Result<()> {
-        warn!("loading legacy file");
-        STATE.write().retrieving = true;
-        let mut step = ReadingHTML;
-        let mut question = String::new();
-        let content = self.0.to_owned();
-
-        for line in content.lines() {
-            debug!(step, line);
-            if line == "-->" || line == "</html>" {
-                warn!("IT SHOULD NEVER HAPPEN");
-                continue;
-            }
-            let line = line.replace("&gt;", ">").replace("&lt;", "<");
-
-            match step {
-                ReadingHTML => {
-                    if line == "filetype: llama markup" {
-                        warn!("end of HTML");
-                        step = ReadingHeader;
-                        continue;
-                    }
-                }
-
-                ReadingHeader => {
-                    if let Some(model) = line.strip_prefix("model: ") {
-                        if !set_model(model) {
-                            warn!("using current model");
-                        }
-                    } else if line == "---" {
-                        warn!("end of headers");
-                        step = ReadingQuestion;
-                        continue;
-                    }
-                }
-
-                ReadingQuestion => {
-                    if line == "<!-- END OF DATA -->" {
-                        warn!("end of data during a question");
-                        self.feed_server(&question).await?;
-                        break;
-                    }
-
-                    STATE.write().output.push_str(&line);
-                    STATE.write().output.push('\n');
-
-                    if let Some(line) =  line.strip_prefix("> ") {
-                        question.push_str(line);
-                    } else {
-                        warn!("end of question");
-                        step = ReadingAnswer;
-                        if let Err(err) = self.feed_server(&question).await {
-                            eprintln!("{:?}", err);
-                        }
-                        question.clear();
-                        continue;
-                    }
-                }
-
-                ReadingAnswer => {
-                    if line == "<!-- END OF DATA -->" {
-                        warn!("end of data");
-                        break;
-                    }
-
-                    STATE.write().output.push_str(&line);
-                    STATE.write().output.push('\n');
-
-                    if let Some(line) = line.strip_prefix("> ") {
-                        warn!("new question");
-                        question.push_str(line);
-                        step = ReadingQuestion;
-                        continue;
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    async fn feed_server(&mut self, question: impl Into<String>) -> Result<()> {
-        let question = question.into();
-        if question.is_empty() {
-            warn!("EMPTY QUESTION");
-            return Ok(());
-        }
-
-        warn!("feeding question: {}", &question);
-        let timeout = time::Duration::from_secs(TIMEOUTS[STATE.read().timeout_idx] as u64);
-        let mut headers = header::HeaderMap::new();
-        headers.insert(
-            "Content-Type",
-            header::HeaderValue::from_static("application/json"),
-        );
-        let client = reqwest::Client::builder()
-            .default_headers(headers)
-            .build()?;
-        let payload = {
-            Request {
-                model: STATE.read().models[STATE.read().selected_model].to_owned(),
-                prompt: question,
-                stream: false,
-                options: AdditionalParams::default(),
-                context: if self.1.is_empty() {
-                    None
-                } else {
-                    Some(self.1.clone())
-                },
-            }
-        };
-        let uri = ollama::path("/api/generate");
-        let payload = serde_json::to_string(&payload)?;
-        debug!(&client, &uri, &payload);
-        let response = time::timeout(timeout, client.post(uri).body(payload).send()).await??;
-
-        if response.status().is_success() {
-            let value: Response = serde_json::from_str(&response.text().await?)?;
-            self.1 = value.context.ok_or_eyre("context")?;
-            debug!(&self.1);
-        }
-
-        Ok(())
-    }
 }
 
-pub async fn save_html(content: &str, path: &str) -> Result<()> {
+async fn save_html(content: &str, path: &str) -> Result<()> {
     use std::io::Write;
 
     warn!("saving to HTML: {}", path);

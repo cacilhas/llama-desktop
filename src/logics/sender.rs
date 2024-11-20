@@ -24,6 +24,7 @@ impl Drop for Sender {
 }
 
 impl Sender {
+    #[inline]
     pub fn new(temperature: f32) -> Self {
         Self(temperature)
     }
@@ -35,7 +36,7 @@ impl Sender {
             let mut state = STATE.write();
             warn!("{:?}", err);
             state.output.push_str("\n## ERROR:\n");
-            state.output.push_str(&format!("{}", err));
+            state.output.push_str(&err.to_string());
         }
     }
 
@@ -59,7 +60,7 @@ impl Sender {
         STATE
             .write()
             .output
-            .push_str(&format_input_to_output(input.clone()));
+            .push_str(&format_input_to_output(&input));
         STATE.write().output.push_str("\n\n");
         if STATE.read().output.is_empty() {
             // XXX: WORKAROUND! It should never happen!
@@ -101,7 +102,7 @@ impl Sender {
         self.check_escape()?;
         let mut response = time::timeout(timeout, client.post(uri).body(payload).send()).await??;
         if !response.status().is_success() {
-            return Err(eyre![response.text().await?]);
+            return Err(eyre!(response.text().await?));
         }
 
         debug!(&response);
@@ -126,9 +127,10 @@ impl Sender {
         Ok(())
     }
 
+    #[inline]
     fn check_escape(&self) -> Result<()> {
         if STATE.read().escape {
-            Err(eyre::eyre!["Escape key pressed."])
+            Err(eyre::eyre!("Escape key pressed."))
         } else {
             Ok(())
         }
