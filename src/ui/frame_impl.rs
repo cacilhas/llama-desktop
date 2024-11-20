@@ -243,7 +243,8 @@ impl App for super::LlamaApp {
                             });
 
                         body = Some(ui.available_rect_before_wrap());
-                        CommonMarkViewer::new("output").show_scrollable(
+                        CommonMarkViewer::default().show_scrollable(
+                            "output",
                             ui,
                             &mut MD_CACHE.write(),
                             &STATE.read().output,
@@ -265,7 +266,8 @@ impl App for super::LlamaApp {
                         });
 
                     body = Some(ui.available_rect_before_wrap());
-                    CommonMarkViewer::new("output").show_scrollable(
+                    CommonMarkViewer::default().show_scrollable(
+                        "output",
                         ui,
                         &mut MD_CACHE.write(),
                         &STATE.read().output,

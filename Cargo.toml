@@ -1,6 +1,6 @@
 [package]
 name = "llama-desktop"
-version = "2.2.10"
+version = "2.3.0"
 authors = ["Montegasppα Cacilhας <montegasppa@cacilhas.info>"]
 license = "MIT"
 readme = "README.md"
@@ -20,20 +20,21 @@ strip = true
 
 [dependencies]
 chrono = "0.4"
-comrak = "0.28"
+color-eyre = "0.6"
+comrak = "0.29"
 eyre = "0.6"
-rfd = "0.14"
+rfd = "0.15"
 serde_json = "1.0"
 static_init = "1.0"
 toml = "0.8"
 url = "2.5"
 
 [dependencies.eframe]
-version = "0.28"
+version = "0.29"
 features = ["persistence"]
 
 [dependencies.egui_commonmark]
-version = "0.17"
+version = "0.18"
 features = ["better_syntax_highlighting"]
 
 [dependencies.image]
@@ -41,7 +42,7 @@ version = "0.25"
 features = ["png"]
 
 [dependencies.egui_extras]
-version = "0.28"
+version = "0.29"
 features = ["image"]
 
 [dependencies.reqwest]
@@ -53,5 +54,5 @@ version = "1.0"
 features = ["derive"]
 
 [dependencies.tokio]
-version = "1.38"
+version = "1.41"
 features = ["full"]
