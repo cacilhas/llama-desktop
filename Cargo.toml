@@ -29,7 +29,7 @@ static_init = "1.0"
 url = "2.5"
 
 [dependencies.eframe]
-version = "0.29"
+version = "0.29.0"
 features = ["persistence"]
 
 [dependencies.egui_commonmark]
@@ -41,7 +41,7 @@ version = "0.25"
 features = ["png"]
 
 [dependencies.egui_extras]
-version = "0.29"
+version = "0.29.0"
 features = ["image"]
 
 [dependencies.reqwest]

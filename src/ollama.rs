@@ -1,13 +1,14 @@
 // TODO: move this mod into logics
 
 use crate::protocol::ModelList;
-use std::{env, panic, process::exit};
+use std::{env, panic};
+use eyre::{eyre, Result};
 use url::Url;
 
 const DEFAULT_HOST: &str = "http://localhost:11434";
 
 #[dynamic]
-static HOST: Url = Url::parse(&get_ollama_host()).unwrap();
+static HOST: Url = get_ollama_host().unwrap();
 
 #[must_use]
 pub fn path(path: &str) -> String {
@@ -34,30 +35,13 @@ pub async fn get_models() -> Vec<String> {
     models
 }
 
-fn get_ollama_host() -> String {
+fn get_ollama_host() -> Result<Url> {
     let uri = env::var("OLLAMA_HOST").unwrap_or(DEFAULT_HOST.to_string());
-    let uri = match Url::parse(&uri) {
-        Ok(uri) => uri,
-        Err(err) => {
-            eprintln!(
-                "error parsing \x1b[33m{}\x1b[0m: \x1b[31;1m{:?}\x1b[0m",
-                uri, err,
-            );
-            eprintln!("fallback to \x1b[33;1m{}\x1b[0m", DEFAULT_HOST);
-            eprintln!(
-                "please review the content of environment variable \x1b[32mOLLAMA_HOST\x1b[0m",
-            );
-            exit(1);
-        }
-    };
-    let Some(host) = uri.host_str() else {
-        eprintln!("fail to parse {}", uri);
-        exit(1);
-    };
-    format!(
-        "{}://{}:{}",
-        uri.scheme(),
-        host,
-        uri.port().unwrap_or(11434),
-    )
+    let mut uri = Url::parse(&uri)?;
+    if uri.port().is_none() {
+        if let Err(_) = uri.set_port(Some(11434)) {
+            return Err(eyre!("error setting URI port"));
+        };
+    }
+    Ok(uri)
 }

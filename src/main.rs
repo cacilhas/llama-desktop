@@ -27,6 +27,7 @@ fn main() -> Result<()> {
         viewport,
         centered: true,
         run_and_return: false,
+        vsync: true,
         ..Default::default()
     };
 
