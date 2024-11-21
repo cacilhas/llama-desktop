@@ -20,8 +20,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let Some(version) = package["version"].as_str() else {
         return Err(Missing("package.version").into());
     };
+    let version = serde_json::to_string(version)?;
     let mut f = File::create(out_path.join("version.rs"))?;
-    writeln!(f, "pub const VERSION: &str = \"{}\";", version)?;
+    writeln!(f, "pub const VERSION: &str = {};", version)?;
     Ok(())
 }
 
