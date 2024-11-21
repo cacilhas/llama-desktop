@@ -7,11 +7,13 @@ use url::Url;
 const DEFAULT_HOST: &str = "http://localhost:11434";
 
 #[dynamic]
-static HOST: String = get_ollama_host();
+static HOST: Url = Url::parse(&get_ollama_host()).unwrap();
 
 #[must_use]
 pub fn path(path: &str) -> String {
-    format!("{}{}", HOST.clone(), path)
+    let mut host = HOST.clone();
+    host.set_path(path);
+    host.to_string()
 }
 
 #[must_use]

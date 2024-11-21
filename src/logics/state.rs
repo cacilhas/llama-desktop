@@ -26,8 +26,8 @@ impl State {
     }
 }
 
-pub fn set_model(model: impl Into<String>) -> bool {
-    let model = model.into();
+pub fn set_model(model: impl ToString) -> bool {
+    let model = model.to_string();
     warn!("setting model to {}", &model);
     let models = STATE.read().models.clone();
     for (idx, model_) in models.iter().enumerate() {
